@@ -55,3 +55,111 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+  - orgId: 1
+    name: chaos-latency
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-latency-saturation
+        title: LatencySaturation
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Owner-search p99 latency over threshold (latency-saturation, no exception)
+          dashboard: "Prometheus: http_server_requests_seconds p99 for uri=/owners"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{uri="/owners"}[1m])))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [1]
+  - orgId: 1
+    name: chaos-error-ratio
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-error-ratio-no-trace
+        title: ErrorRatioNoTrace
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: petclinic
+        annotations:
+          summary: petclinic 5xx ratio over threshold (error-ratio, no usable app trace)
+          dashboard: "Prometheus: rate(http_server_requests_seconds_count{outcome=SERVER_ERROR})"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'sum(rate(http_server_requests_seconds_count{outcome="SERVER_ERROR"}[1m])) / sum(rate(http_server_requests_seconds_count[1m]))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.1]
