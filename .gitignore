@@ -46,3 +46,9 @@ out/
 _site/
 *.css
 !petclinic.css
+
+### Local-only (never push to remote) ###
+.env
+.claude/
+docs/
+.superpowers/

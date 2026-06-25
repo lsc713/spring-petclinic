@@ -22,6 +22,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.chaos.ChaosFaults;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -52,8 +53,11 @@ class OwnerController {
 
 	private final OwnerRepository owners;
 
-	public OwnerController(OwnerRepository owners) {
+	private final ChaosFaults chaosFaults;
+
+	public OwnerController(OwnerRepository owners, ChaosFaults chaosFaults) {
 		this.owners = owners;
+		this.chaosFaults = chaosFaults;
 	}
 
 	@InitBinder
@@ -94,11 +98,9 @@ class OwnerController {
 	@GetMapping("/owners")
 	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
 			Model model) {
-		// allow parameterless GET request for /owners to return all records
-		String lastName = owner.getLastName();
-		if (lastName == null) {
-			lastName = ""; // empty string signifies broadest possible search
-		}
+		// allow parameterless GET request for /owners to return all records;
+		// routed through the chaos seam (no-op in production)
+		String lastName = this.chaosFaults.normalizeLastName(owner.getLastName());
 
 		// find owners by last name
 		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
