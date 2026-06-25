@@ -15,7 +15,10 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import java.net.ConnectException;
+
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataAccessResourceFailureException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
@@ -42,6 +45,22 @@ class ActiveChaosFaultsTests {
 	void armedStillReturnsNonNullTerms() {
 		this.state.arm(ActiveChaosFaults.OWNER_SEARCH_NPE);
 		assertThat(this.faults.normalizeLastName("Franklin")).isEqualTo("Franklin");
+	}
+
+	@Test
+	void disarmedDbDownIsReachable() {
+		// no scenario armed: the guard must return normally
+		this.faults.assertDatabaseReachable();
+	}
+
+	@Test
+	void armedDbDownThrowsInfraTypedFailure() {
+		this.state.arm(ActiveChaosFaults.DB_DOWN);
+		// infrastructure-typed (DataAccessResourceFailureException) with a
+		// ConnectException cause — NOT a localizable app NullPointerException
+		assertThatExceptionOfType(DataAccessResourceFailureException.class)
+			.isThrownBy(() -> this.faults.assertDatabaseReachable())
+			.withCauseInstanceOf(ConnectException.class);
 	}
 
 }
