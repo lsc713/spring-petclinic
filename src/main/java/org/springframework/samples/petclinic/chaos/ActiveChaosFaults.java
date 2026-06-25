@@ -16,7 +16,9 @@
 package org.springframework.samples.petclinic.chaos;
 
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Fault seam active under the {@code chaos} profile. Applies a fault only while its
@@ -28,6 +30,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 
 	/** Scenario key: Class A synchronous NPE on owner search. */
 	public static final String OWNER_SEARCH_NPE = "ownerSearchNpe";
+
+	/** Scenario key: latency fault — N+1 query amplification on owner search. */
+	public static final String OWNER_LIST_LATENCY = "ownerListLatency";
+
+	/** Scenario key: error-ratio fault — opaque 5xx on the vet list. */
+	public static final String VET_LIST_ERROR = "vetListError";
 
 	private final ChaosState state;
 
@@ -43,6 +51,20 @@ public class ActiveChaosFaults implements ChaosFaults {
 			return lastName.trim();
 		}
 		return lastName == null ? "" : lastName;
+	}
+
+	@Override
+	public boolean amplifyOwnerReads() {
+		return this.state.isArmed(OWNER_LIST_LATENCY);
+	}
+
+	@Override
+	public void maybeFailVetList() {
+		if (this.state.isArmed(VET_LIST_ERROR)) {
+			// Seeded error-ratio fault: an opaque framework 5xx with no
+			// underlying app defect to localize (routes to evidence-only).
+			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "vet directory upstream unavailable");
+		}
 	}
 
 }

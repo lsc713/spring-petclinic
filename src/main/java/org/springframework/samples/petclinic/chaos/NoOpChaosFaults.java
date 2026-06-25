@@ -32,4 +32,13 @@ public class NoOpChaosFaults implements ChaosFaults {
 		return lastName == null ? "" : lastName;
 	}
 
+	@Override
+	public boolean amplifyOwnerReads() {
+		return false;
+	}
+
+	@Override
+	public void maybeFailVetList() {
+	}
+
 }

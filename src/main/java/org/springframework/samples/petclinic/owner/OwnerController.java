@@ -104,6 +104,12 @@ class OwnerController {
 
 		// find owners by last name
 		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
+		if (this.chaosFaults.amplifyOwnerReads()) {
+			// Seeded latency fault (N+1): one extra query per owner in the page.
+			for (Owner each : ownersResults) {
+				this.owners.findById(each.getId());
+			}
+		}
 		if (ownersResults.isEmpty()) {
 			// no owners found
 			result.rejectValue("lastName", "notFound", "not found");

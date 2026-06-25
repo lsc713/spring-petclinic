@@ -31,4 +31,17 @@ public interface ChaosFaults {
 	 */
 	String normalizeLastName(String lastName);
 
+	/**
+	 * Whether the owner-search read path should amplify queries (latency fault).
+	 * Production behavior: {@code false} (no amplification).
+	 * @return true only when the latency scenario is armed under the chaos profile
+	 */
+	boolean amplifyOwnerReads();
+
+	/**
+	 * Hook at the start of the vet-list request. Production behavior: does nothing. Under
+	 * the error-ratio scenario it throws an opaque 5xx (no localizable defect).
+	 */
+	void maybeFailVetList();
+
 }

@@ -20,6 +20,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.chaos.ChaosFaults;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,12 +38,16 @@ class VetController {
 
 	private final VetRepository vetRepository;
 
-	public VetController(VetRepository vetRepository) {
+	private final ChaosFaults chaosFaults;
+
+	public VetController(VetRepository vetRepository, ChaosFaults chaosFaults) {
 		this.vetRepository = vetRepository;
+		this.chaosFaults = chaosFaults;
 	}
 
 	@GetMapping("/vets.html")
 	public String showVetList(@RequestParam(defaultValue = "1") int page, Model model) {
+		this.chaosFaults.maybeFailVetList();
 		Page<Vet> paginated = findPaginated(page);
 		return addPaginationModel(page, paginated, model);
 	}
