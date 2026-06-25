@@ -61,6 +61,8 @@ public class CorrectnessOracle {
 	 */
 	public void runOwnerSearchCheck() {
 		String term = this.chaosFaults.corruptSearchTerm(KNOWN_LAST_NAME);
+		// Seed data has exactly one "Davis"; the corruption fault returns a
+		// no-match sentinel term, so a single page of 20 always suffices here.
 		Page<Owner> results = this.owners.findByLastNameStartingWith(term, PageRequest.of(0, 20));
 		boolean found = false;
 		for (Owner each : results) {
