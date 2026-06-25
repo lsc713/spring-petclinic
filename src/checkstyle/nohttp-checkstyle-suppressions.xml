@@ -8,4 +8,10 @@
 	<suppress files="build[\\/].*" checks=".*"/>
 	<suppress files="target[\\/].*" checks=".*"/>
 	<suppress files=".+\.(jar|git|ico|p12|gif|jks|jpg|svg|log)" checks="NoHttp"/>
+	<!-- Local-only chaos test-bench dirs: internal docker URLs (host.docker.internal,
+	     service names) are reached over plain HTTP by design and cannot be https. -->
+	<suppress files="docs[\\/].*" checks="NoHttp"/>
+	<suppress files="scripts[\\/].*" checks="NoHttp"/>
+	<suppress files="observability[\\/].*" checks="NoHttp"/>
+	<suppress files="[.]superpowers[\\/].*" checks="NoHttp"/>
 </suppressions>
