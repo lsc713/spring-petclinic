@@ -25,5 +25,5 @@ for i in $(seq 1 24); do
   sleep 5
 done
 
-echo "LATENCY ALERT DID NOT FIRE ❌ — check Prometheus p99 for uri=/owners; the p99>1s threshold may need tuning for this machine (rules.yml chaos-latency params)."
+echo "LATENCY ALERT DID NOT FIRE ❌ — check Prometheus p99 for uri=/owners; the p99 threshold may need tuning for this machine (rules.yml chaos-latency params)."
 exit 1
