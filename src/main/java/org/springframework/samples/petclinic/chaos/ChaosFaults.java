@@ -38,4 +38,10 @@ public interface ChaosFaults {
 	 */
 	boolean amplifyOwnerReads();
 
+	/**
+	 * Hook at the start of the vet-list request. Production behavior: does nothing. Under
+	 * the error-ratio scenario it throws an opaque 5xx (no localizable defect).
+	 */
+	void maybeFailVetList();
+
 }

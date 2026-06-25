@@ -37,4 +37,8 @@ public class NoOpChaosFaults implements ChaosFaults {
 		return false;
 	}
 
+	@Override
+	public void maybeFailVetList() {
+	}
+
 }
