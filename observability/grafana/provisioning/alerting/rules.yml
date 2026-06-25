@@ -108,7 +108,7 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [1]
+                    params: [0.1]
   - orgId: 1
     name: chaos-error-ratio
     folder: chaos
