@@ -29,3 +29,18 @@ services:
       - ../logs:/var/log/petclinic:ro
     depends_on:
       - loki
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - SLACK_BOT_TOKEN=${SLACK_BOT_TOKEN}
+      - ONCALL_SLACK_CHANNEL=${ONCALL_SLACK_CHANNEL}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+      - loki

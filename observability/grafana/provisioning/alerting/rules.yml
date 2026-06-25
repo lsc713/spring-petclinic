@@ -1,0 +1,57 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: chaos-classA
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: classa-owner-search-npe
+        title: ClassAOwnerSearchNPE
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: petclinic
+        annotations:
+          alertname: ClassAOwnerSearchNPE
+          summary: Owner-search NullPointerException (Class A) detected in petclinic
+          logs: "Loki: {service=\"petclinic\"} |= \"NullPointerException\""
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              expr: 'count_over_time({service="petclinic"} |= "NullPointerException" [5m])'
+              queryType: range
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
