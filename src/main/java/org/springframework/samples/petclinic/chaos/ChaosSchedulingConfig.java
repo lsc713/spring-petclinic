@@ -13,37 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.springframework.samples.petclinic.chaos;
 
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
- * Default fault seam — a no-op preserving production behavior. Registered whenever the
- * {@code chaos} profile is NOT active.
+ * Enables {@code @Scheduled} support for the chaos test bench (the correctness oracle
+ * probe). Active only under the {@code chaos} profile, so default runs add no scheduler.
  */
-@Component
-@Profile("!chaos")
-public class NoOpChaosFaults implements ChaosFaults {
-
-	@Override
-	public String normalizeLastName(String lastName) {
-		return lastName == null ? "" : lastName;
-	}
-
-	@Override
-	public boolean amplifyOwnerReads() {
-		return false;
-	}
-
-	@Override
-	public void maybeFailVetList() {
-	}
-
-	@Override
-	public String corruptSearchTerm(String lastName) {
-		return lastName;
-	}
+@Configuration
+@Profile("chaos")
+@EnableScheduling
+class ChaosSchedulingConfig {
 
 }

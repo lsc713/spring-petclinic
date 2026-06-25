@@ -163,3 +163,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0.1]
+  - orgId: 1
+    name: chaos-silent-corruption
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-silent-corruption
+        title: SilentCorruption
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: petclinic
+        annotations:
+          summary: Owner-search returned wrong results (silent corruption — HTTP 200, no exception, no 5xx)
+          oracle: "petclinic_correctness_violations_total{check=ownerSearch} — only the correctness oracle surfaces this class"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'sum(increase(petclinic_correctness_violations_total{check="ownerSearch"}[1m]))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]

@@ -37,6 +37,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	/** Scenario key: error-ratio fault — opaque 5xx on the vet list. */
 	public static final String VET_LIST_ERROR = "vetListError";
 
+	/** Scenario key: silent data corruption — owner search returns wrong results. */
+	public static final String OWNER_SEARCH_CORRUPTION = "ownerSearchCorruption";
+
+	/** Sentinel term that matches no owner (used by the corruption fault). */
+	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
+
 	private final ChaosState state;
 
 	public ActiveChaosFaults(ChaosState state) {
@@ -65,6 +71,16 @@ public class ActiveChaosFaults implements ChaosFaults {
 			// underlying app defect to localize (routes to evidence-only).
 			throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "vet directory upstream unavailable");
 		}
+	}
+
+	@Override
+	public String corruptSearchTerm(String lastName) {
+		if (this.state.isArmed(OWNER_SEARCH_CORRUPTION)) {
+			// Seeded silent corruption: query a term that matches nothing, so a
+			// valid search returns wrong (empty) results with HTTP 200 and no error.
+			return NO_MATCH_SENTINEL;
+		}
+		return lastName;
 	}
 
 }
