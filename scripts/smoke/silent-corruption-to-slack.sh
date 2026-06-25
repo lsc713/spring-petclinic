@@ -24,6 +24,7 @@ err=$(curl -s "$PROM/api/v1/query" --data-urlencode \
   'query=sum(increase(http_server_requests_seconds_count{uri="/owners",outcome="SERVER_ERROR"}[2m]))' \
   | jq -r '.data.result[0].value[1] // "0"')
 echo "    /owners SERVER_ERROR increase = $err (expected 0 — no 5xx)"
+awk "BEGIN{exit !($err+0 < 1)}" || { echo "FAIL: /owners 5xx increase=$err, expected ~0 — A10 standard signals must be blind"; exit 1; }
 
 echo "==> A11: waiting up to 120s for the correctness oracle to fire SilentCorruption"
 for i in $(seq 1 24); do
