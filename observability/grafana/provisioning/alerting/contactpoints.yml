@@ -1,0 +1,18 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: slack-oncall
+    receivers:
+      - uid: slack-oncall
+        type: slack
+        settings:
+          token: $__env{SLACK_BOT_TOKEN}
+          recipient: $__env{ONCALL_SLACK_CHANNEL}
+          title: |
+            [{{ .CommonLabels.severity }}] {{ .CommonLabels.alertname }} — {{ .CommonLabels.service }}
+          text: |
+            {{ range .Alerts }}*{{ .Annotations.summary }}*
+            startsAt: {{ .StartsAt }}
+            {{ .Annotations.logs }}
+            {{ end }}

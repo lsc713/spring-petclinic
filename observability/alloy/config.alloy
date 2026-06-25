@@ -1,0 +1,34 @@
+local.file_match "petclinic" {
+  path_targets = [{
+    __path__ = "/var/log/petclinic/petclinic.json",
+    service  = "petclinic",
+  }]
+}
+
+loki.source.file "petclinic" {
+  targets    = local.file_match.petclinic.targets
+  forward_to = [loki.process.petclinic.receiver]
+}
+
+loki.process "petclinic" {
+  stage.json {
+    expressions = {
+      level   = "level",
+      logger  = "logger_name",
+      message = "message",
+    }
+  }
+  stage.labels {
+    values = {
+      service = "",
+      level   = "",
+    }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}
