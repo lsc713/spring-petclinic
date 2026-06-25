@@ -29,6 +29,9 @@ public class ActiveChaosFaults implements ChaosFaults {
 	/** Scenario key: Class A synchronous NPE on owner search. */
 	public static final String OWNER_SEARCH_NPE = "ownerSearchNpe";
 
+	/** Scenario key: latency fault — N+1 query amplification on owner search. */
+	public static final String OWNER_LIST_LATENCY = "ownerListLatency";
+
 	private final ChaosState state;
 
 	public ActiveChaosFaults(ChaosState state) {
@@ -43,6 +46,11 @@ public class ActiveChaosFaults implements ChaosFaults {
 			return lastName.trim();
 		}
 		return lastName == null ? "" : lastName;
+	}
+
+	@Override
+	public boolean amplifyOwnerReads() {
+		return this.state.isArmed(OWNER_LIST_LATENCY);
 	}
 
 }
