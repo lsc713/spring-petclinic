@@ -101,6 +101,7 @@ class OwnerController {
 		// allow parameterless GET request for /owners to return all records;
 		// routed through the chaos seam (no-op in production)
 		String lastName = this.chaosFaults.normalizeLastName(owner.getLastName());
+		lastName = this.chaosFaults.corruptSearchTerm(lastName);
 
 		// find owners by last name
 		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);

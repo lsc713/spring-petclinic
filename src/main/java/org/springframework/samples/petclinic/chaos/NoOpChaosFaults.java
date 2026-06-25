@@ -41,4 +41,9 @@ public class NoOpChaosFaults implements ChaosFaults {
 	public void maybeFailVetList() {
 	}
 
+	@Override
+	public String corruptSearchTerm(String lastName) {
+		return lastName;
+	}
+
 }

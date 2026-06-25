@@ -44,4 +44,12 @@ public interface ChaosFaults {
 	 */
 	void maybeFailVetList();
 
+	/**
+	 * Corrupt an owner-search term (silent data-corruption fault). Production behavior:
+	 * returns the term unchanged.
+	 * @param lastName the (already normalized) search term
+	 * @return the term to actually query with
+	 */
+	String corruptSearchTerm(String lastName);
+
 }
