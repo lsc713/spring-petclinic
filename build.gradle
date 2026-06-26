@@ -41,7 +41,8 @@ dependencies {
   runtimeOnly 'org.springframework.boot:spring-boot-starter-actuator'
   runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
   implementation 'io.micrometer:micrometer-core'
-  implementation 'io.micrometer:micrometer-tracing-bridge-otel'
+  implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
+  implementation 'org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry'
   implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
   implementation 'org.springframework.boot:spring-boot-starter-restclient'
   runtimeOnly "org.webjars:webjars-locator-lite:${webjarsLocatorLiteVersion}"

@@ -44,7 +44,9 @@ echo "==> W5a-2: the trace localizes the slow span to the downstream /delay call
 # Tempo TraceQL search: a span named for the downstream HTTP GET with duration > 1s.
 # (Exact query finalized at the live gate; this searches recent traces for a slow client span.)
 sleep 8  # allow trace ingest
-found=$(curl -s "$TEMPO/api/search" --data-urlencode 'q={ span.http.url =~ ".*/delay/.*" && duration > 1s }' \
+# -G is REQUIRED: Tempo reads the TraceQL `q` from the URL query string, not a POST body —
+# without it the filter is silently dropped and every recent trace matches (false PASS).
+found=$(curl -s -G "$TEMPO/api/search" --data-urlencode 'q={ span.http.url =~ ".*/delay/.*" && duration > 1s }' \
   | jq -r '.traces | length')
 echo "    Tempo traces with a >1s downstream /delay span = ${found:-0} (expected >= 1)"
 awk "BEGIN{exit !(${found:-0}+0 >= 1)}" || { echo "FAIL: no trace localized the slow downstream span"; exit 1; }
