@@ -25,16 +25,15 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: chaos
-            # -Xmx ABOVE the pod memory limit so the OOM-kill fault produces a kernel
-            # cgroup OOM-kill (SIGKILL, app-blind) instead of a JVM OutOfMemoryError.
-            # Paketo honors a user-provided -Xmx and skips its memory calculator's -Xmx.
-            - name: JAVA_TOOL_OPTIONS
-              value: "-Xmx1g"
+          # No -Xmx override: Paketo's memory calculator sizes the heap to fit this limit so
+          # the JVM boots cleanly. The oomKill fault allocates NATIVE (off-heap) memory, which
+          # the calculator does not count, so resident memory still climbs past the limit and
+          # the kernel OOM-kills the container (app-blind SIGKILL). See OomKillEndpoint.
           resources:
             requests:
-              memory: "512Mi"
+              memory: "768Mi"
             limits:
-              memory: "512Mi"
+              memory: "768Mi"
 ---
 apiVersion: v1
 kind: Service
