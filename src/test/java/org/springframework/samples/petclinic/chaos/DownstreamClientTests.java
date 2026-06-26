@@ -16,9 +16,13 @@
 package org.springframework.samples.petclinic.chaos;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.autoconfigure.AutoConfigurations;
+import org.springframework.boot.restclient.autoconfigure.RestClientAutoConfiguration;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
@@ -55,6 +59,23 @@ class DownstreamClientTests {
 
 		// no expectations set; verify() passes only if zero requests were issued
 		server.verify();
+	}
+
+	@Test
+	void wiresUnderChaosProfileWithAutoConfiguredBuilder() {
+		// Regression guard: DownstreamClient needs an auto-configured RestClient.Builder
+		// bean.
+		// Spring Boot 4's modular layout means spring-boot-starter-webmvc does NOT
+		// provide it —
+		// the app needs spring-boot-starter-restclient on the main classpath. Boot the
+		// bean
+		// against the RestClient autoconfig under the chaos profile to prove it wires.
+		new ApplicationContextRunner().withConfiguration(AutoConfigurations.of(RestClientAutoConfiguration.class))
+			.withBean(ChaosState.class)
+			.withUserConfiguration(DownstreamClient.class)
+			.withPropertyValues("spring.profiles.active=chaos", "chaos.downstream.base-url=http://stub",
+					"chaos.downstream.delay-seconds=2")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(DownstreamClient.class));
 	}
 
 }

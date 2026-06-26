@@ -43,6 +43,7 @@ dependencies {
   implementation 'io.micrometer:micrometer-core'
   implementation 'io.micrometer:micrometer-tracing-bridge-otel'
   implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
+  implementation 'org.springframework.boot:spring-boot-starter-restclient'
   runtimeOnly "org.webjars:webjars-locator-lite:${webjarsLocatorLiteVersion}"
   runtimeOnly "org.webjars.npm:bootstrap:${webjarsBootstrapVersion}"
   runtimeOnly "org.webjars.npm:font-awesome:${webjarsFontawesomeVersion}"
