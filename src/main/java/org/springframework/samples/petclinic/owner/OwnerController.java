@@ -147,7 +147,12 @@ class OwnerController {
 	private Page<Owner> findPaginatedForOwnersLastName(int page, String lastname) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		return owners.findByLastNameStartingWith(lastname, pageable);
+		if (this.chaosFaults.useRegressedOwnerQuery()) {
+			// Seeded query-plan regression: leading-wildcard LIKE '%name%' defeats the
+			// last_name index and forces a Seq Scan (slow on a large table).
+			return this.owners.findByLastNameContaining(lastname, pageable);
+		}
+		return this.owners.findByLastNameStartingWith(lastname, pageable);
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")
