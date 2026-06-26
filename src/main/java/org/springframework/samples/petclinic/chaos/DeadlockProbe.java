@@ -22,6 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -41,6 +42,7 @@ public class DeadlockProbe {
 
 	private final AtomicInteger deadlockedThreads = new AtomicInteger(0);
 
+	@Autowired
 	public DeadlockProbe(MeterRegistry registry) {
 		this(registry, ManagementFactory.getThreadMXBean());
 	}
