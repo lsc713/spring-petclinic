@@ -29,11 +29,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
 @WebMvcTest(OwnerController.class)
 @ActiveProfiles("chaos")
@@ -75,9 +76,9 @@ class OwnerDbDownChaosTests {
 
 	@Test
 	void disarmedDbDownServesOwnerDetails() throws Exception {
-		this.mockMvc.perform(get("/owners/1"));
-		// no exception: disarmed chaos == production behavior
-		assertThat(this.chaosState.isArmed(ActiveChaosFaults.DB_DOWN)).isFalse();
+		// disarmed chaos == production behavior: owner-details served (200), seam never
+		// throws
+		this.mockMvc.perform(get("/owners/1")).andExpect(status().isOk()).andExpect(view().name("owners/ownerDetails"));
 	}
 
 }
