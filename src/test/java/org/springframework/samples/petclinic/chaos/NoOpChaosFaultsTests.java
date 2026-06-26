@@ -16,12 +16,10 @@
 
 package org.springframework.samples.petclinic.chaos;
 
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@Order(1)
 class NoOpChaosFaultsTests {
 
 	private final ChaosFaults faults = new NoOpChaosFaults();
@@ -51,13 +49,18 @@ class NoOpChaosFaultsTests {
 
 	@Test
 	void triggerDeadlockIsNoOp() throws InterruptedException {
+		long before = chaosDeadlockThreadCount();
 		this.faults.triggerDeadlock();
 		Thread.sleep(200);
-		boolean anySpawned = Thread.getAllStackTraces()
+		assertThat(chaosDeadlockThreadCount()).isEqualTo(before);
+	}
+
+	private static long chaosDeadlockThreadCount() {
+		return Thread.getAllStackTraces()
 			.keySet()
 			.stream()
-			.anyMatch(t -> t.getName().startsWith("chaos-deadlock"));
-		assertThat(anySpawned).isFalse();
+			.filter(t -> t.getName().startsWith("chaos-deadlock"))
+			.count();
 	}
 
 }

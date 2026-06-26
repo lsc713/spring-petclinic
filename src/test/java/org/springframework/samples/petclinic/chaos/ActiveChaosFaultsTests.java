@@ -19,16 +19,12 @@ import java.lang.Thread.State;
 import java.net.ConnectException;
 import java.util.Map;
 
-import org.junit.jupiter.api.MethodOrderer;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ActiveChaosFaultsTests {
 
 	private final ChaosState state = new ChaosState();
@@ -89,7 +85,6 @@ class ActiveChaosFaultsTests {
 	}
 
 	@Test
-	@Order(99)
 	void armedDeadlockBlocksTwoNamedThreads() throws InterruptedException {
 		this.state.arm(ActiveChaosFaults.DEADLOCK);
 		this.faults.triggerDeadlock();
@@ -112,15 +107,19 @@ class ActiveChaosFaultsTests {
 	}
 
 	@Test
-	@Order(98)
 	void disarmedDeadlockSpawnsNoThreads() throws InterruptedException {
+		long before = chaosDeadlockThreadCount();
 		this.faults.triggerDeadlock();
 		Thread.sleep(200);
-		boolean anySpawned = Thread.getAllStackTraces()
+		assertThat(chaosDeadlockThreadCount()).isEqualTo(before);
+	}
+
+	private static long chaosDeadlockThreadCount() {
+		return Thread.getAllStackTraces()
 			.keySet()
 			.stream()
-			.anyMatch(t -> t.getName().startsWith("chaos-deadlock"));
-		assertThat(anySpawned).isFalse();
+			.filter(t -> t.getName().startsWith("chaos-deadlock"))
+			.count();
 	}
 
 }
