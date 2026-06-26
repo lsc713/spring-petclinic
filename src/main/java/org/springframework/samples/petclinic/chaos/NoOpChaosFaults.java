@@ -56,4 +56,9 @@ public class NoOpChaosFaults implements ChaosFaults {
 		// Production: never blocks the worker thread.
 	}
 
+	@Override
+	public void triggerDeadlock() {
+		// Production: never creates a deadlock.
+	}
+
 }

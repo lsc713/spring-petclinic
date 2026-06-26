@@ -71,4 +71,13 @@ public interface ChaosFaults {
 	 */
 	void maybeBlockWorker();
 
+	/**
+	 * Hook on the owner-search handler (deadlock fault). Production behavior: does
+	 * nothing. Under the {@code deadlock} scenario the first armed invocation spawns two
+	 * daemon threads that acquire two monitors in opposite order, producing a permanent
+	 * Java-level deadlock — invisible to latency/error metrics, localizable only from a
+	 * thread dump. Idempotent and non-blocking for the caller.
+	 */
+	void triggerDeadlock();
+
 }

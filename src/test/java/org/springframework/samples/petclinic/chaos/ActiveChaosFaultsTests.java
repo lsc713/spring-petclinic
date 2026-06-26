@@ -15,14 +15,20 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import java.lang.Thread.State;
 import java.net.ConnectException;
+import java.util.Map;
 
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ActiveChaosFaultsTests {
 
 	private final ChaosState state = new ChaosState();
@@ -80,6 +86,41 @@ class ActiveChaosFaultsTests {
 		this.faults.maybeBlockWorker();
 		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 		assertThat(elapsedMs).isLessThan(100);
+	}
+
+	@Test
+	@Order(99)
+	void armedDeadlockBlocksTwoNamedThreads() throws InterruptedException {
+		this.state.arm(ActiveChaosFaults.DEADLOCK);
+		this.faults.triggerDeadlock();
+
+		// The two daemon threads must reach BLOCKED state on each other's monitor.
+		int blocked = 0;
+		for (int i = 0; i < 50 && blocked < 2; i++) {
+			blocked = 0;
+			for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+				Thread t = e.getKey();
+				if (t.getName().startsWith("chaos-deadlock") && t.getState() == State.BLOCKED) {
+					blocked++;
+				}
+			}
+			if (blocked < 2) {
+				Thread.sleep(100);
+			}
+		}
+		assertThat(blocked).isGreaterThanOrEqualTo(2);
+	}
+
+	@Test
+	@Order(98)
+	void disarmedDeadlockSpawnsNoThreads() throws InterruptedException {
+		this.faults.triggerDeadlock();
+		Thread.sleep(200);
+		boolean anySpawned = Thread.getAllStackTraces()
+			.keySet()
+			.stream()
+			.anyMatch(t -> t.getName().startsWith("chaos-deadlock"));
+		assertThat(anySpawned).isFalse();
 	}
 
 }
