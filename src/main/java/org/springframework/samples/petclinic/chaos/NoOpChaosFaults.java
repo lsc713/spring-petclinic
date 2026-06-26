@@ -46,4 +46,9 @@ public class NoOpChaosFaults implements ChaosFaults {
 		return lastName;
 	}
 
+	@Override
+	public void assertDatabaseReachable() {
+		// Production: the database is reachable; nothing to do.
+	}
+
 }

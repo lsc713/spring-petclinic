@@ -52,4 +52,14 @@ public interface ChaosFaults {
 	 */
 	String corruptSearchTerm(String lastName);
 
+	/**
+	 * Guard at the start of a data-access path (database-connectivity fault). Production
+	 * behavior: does nothing. Under the {@code dbDown} scenario it throws an
+	 * infrastructure-typed
+	 * {@link org.springframework.dao.DataAccessResourceFailureException} whose root cause
+	 * is a {@link java.net.ConnectException} — a 5xx with a stack trace that points at
+	 * the database, not at an application defect.
+	 */
+	void assertDatabaseReachable();
+
 }

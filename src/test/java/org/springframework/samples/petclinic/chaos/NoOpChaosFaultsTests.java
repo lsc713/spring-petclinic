@@ -34,4 +34,9 @@ class NoOpChaosFaultsTests {
 		assertThat(this.faults.normalizeLastName("Franklin")).isEqualTo("Franklin");
 	}
 
+	@Test
+	void assertDatabaseReachableIsNoOp() {
+		this.faults.assertDatabaseReachable();
+	}
+
 }

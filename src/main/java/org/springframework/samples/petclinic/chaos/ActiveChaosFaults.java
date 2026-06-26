@@ -15,7 +15,10 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import java.net.ConnectException;
+
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -39,6 +42,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 
 	/** Scenario key: silent data corruption — owner search returns wrong results. */
 	public static final String OWNER_SEARCH_CORRUPTION = "ownerSearchCorruption";
+
+	/**
+	 * Scenario key: database-connectivity fault — owner-details read fails with a 5xx
+	 * whose root cause is DB connectivity (misdiagnosis trap: route to infra, not app).
+	 */
+	public static final String DB_DOWN = "dbDown";
 
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
@@ -81,6 +90,18 @@ public class ActiveChaosFaults implements ChaosFaults {
 			return NO_MATCH_SENTINEL;
 		}
 		return lastName;
+	}
+
+	@Override
+	public void assertDatabaseReachable() {
+		if (this.state.isArmed(DB_DOWN)) {
+			// Seeded infrastructure fault: the database connection is refused. The
+			// resulting 5xx carries a stack trace, but its root cause is a
+			// ConnectException (network/DB), NOT a localizable application defect —
+			// the correct triage routes to infra, not an app code PR.
+			throw new DataAccessResourceFailureException("could not open JDBC connection",
+					new ConnectException("Connection refused"));
+		}
 	}
 
 }
