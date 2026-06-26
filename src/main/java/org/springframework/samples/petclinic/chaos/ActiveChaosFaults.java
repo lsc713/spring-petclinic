@@ -17,6 +17,7 @@ package org.springframework.samples.petclinic.chaos;
 
 import java.net.ConnectException;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
@@ -49,10 +50,23 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String DB_DOWN = "dbDown";
 
+	/**
+	 * Scenario key: thread-pool saturation — armed owner searches park their worker
+	 * thread.
+	 */
+	public static final String THREAD_STARVATION = "threadStarvation";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
 	private final ChaosState state;
+
+	@Value("${chaos.thread-block-ms:10000}")
+	private long threadBlockMs = 10000;
+
+	void setThreadBlockMs(long threadBlockMs) {
+		this.threadBlockMs = threadBlockMs;
+	}
 
 	public ActiveChaosFaults(ChaosState state) {
 		this.state = state;
@@ -101,6 +115,25 @@ public class ActiveChaosFaults implements ChaosFaults {
 			// the correct triage routes to infra, not an app code PR.
 			throw new DataAccessResourceFailureException("could not open JDBC connection",
 					new ConnectException("Connection refused"));
+		}
+	}
+
+	@Override
+	public void maybeBlockWorker() {
+		if (this.state.isArmed(THREAD_STARVATION)) {
+			// Seeded saturation: hold the worker thread so concurrent load drains a small
+			// pool. The cause is only localizable from a thread dump (N threads parked
+			// here).
+			sleepQuietly(this.threadBlockMs);
+		}
+	}
+
+	private static void sleepQuietly(long millis) {
+		try {
+			Thread.sleep(millis);
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
 		}
 	}
 

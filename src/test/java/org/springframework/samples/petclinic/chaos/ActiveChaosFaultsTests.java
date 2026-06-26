@@ -63,4 +63,23 @@ class ActiveChaosFaultsTests {
 			.withCauseInstanceOf(ConnectException.class);
 	}
 
+	@Test
+	void armedThreadStarvationBlocksWorker() {
+		this.faults.setThreadBlockMs(150);
+		this.state.arm(ActiveChaosFaults.THREAD_STARVATION);
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isGreaterThanOrEqualTo(150);
+	}
+
+	@Test
+	void disarmedThreadStarvationDoesNotBlock() {
+		this.faults.setThreadBlockMs(5000);
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isLessThan(100);
+	}
+
 }

@@ -39,4 +39,12 @@ class NoOpChaosFaultsTests {
 		this.faults.assertDatabaseReachable();
 	}
 
+	@Test
+	void maybeBlockWorkerIsNoOp() {
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isLessThan(100);
+	}
+
 }

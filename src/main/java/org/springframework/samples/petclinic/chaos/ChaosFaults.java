@@ -62,4 +62,13 @@ public interface ChaosFaults {
 	 */
 	void assertDatabaseReachable();
 
+	/**
+	 * Hook at the start of the owner-search handler (thread-pool saturation fault).
+	 * Production behavior: returns immediately. Under the {@code threadStarvation}
+	 * scenario it parks the calling worker thread for a bounded duration, so concurrent
+	 * load exhausts a small pool — a saturation whose cause is only visible in a thread
+	 * dump, not in the latency/error metrics.
+	 */
+	void maybeBlockWorker();
+
 }
