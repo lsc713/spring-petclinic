@@ -92,8 +92,8 @@ public interface ChaosFaults {
 
 	/**
 	 * Whether the OOM-kill endpoint should exhaust container memory (class-E
-	 * infrastructure fault). Production behavior: {@code false} (the endpoint is a no-op).
-	 * Under the {@code oomKill} scenario it returns {@code true}, so the endpoint
+	 * infrastructure fault). Production behavior: {@code false} (the endpoint is a
+	 * no-op). Under the {@code oomKill} scenario it returns {@code true}, so the endpoint
 	 * allocates and retains heap beyond the pod memory limit until the kernel OOM-kills
 	 * the container — a SIGKILL with no application stack trace.
 	 * @return true only when the oomKill scenario is armed under the chaos profile
