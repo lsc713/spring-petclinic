@@ -489,3 +489,152 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+  - orgId: 1
+    name: chaos-k8s-events
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-kube-oom-killed
+        title: KubeOOMKilled
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: A pod was OOMKilled by the kernel — the app log just stops, no stack trace
+          event: "Augmentation signal: the Kubernetes event stream ({job=\"k8s-events\"} |~ \"OOMKill\") names the cause as a container memory-limit kill (infrastructure), not an application defect."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              expr: 'count_over_time({job="k8s-events"} |~ `OOMKill` [5m])'
+              queryType: instant
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+      - uid: chaos-kube-failed-scheduling
+        title: KubeFailedScheduling
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: A pod cannot be scheduled — no app logs exist at all, the instance never started
+          event: "Augmentation signal: the scheduler event ({job=\"k8s-events\"} |= \"FailedScheduling\") names the cause as unsatisfiable resource requests (infrastructure)."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              expr: 'count_over_time({job="k8s-events"} |= `FailedScheduling` [5m])'
+              queryType: instant
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+      - uid: chaos-kube-pod-evicted
+        title: KubePodEvicted
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: A pod was evicted — in-flight requests dropped with no application error
+          event: "Augmentation signal: the eviction event ({job=\"k8s-events\"} |= \"Evicted\") names the cause as a pod eviction (infrastructure), not app logic."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: loki
+            model:
+              refId: A
+              datasource:
+                type: loki
+                uid: loki
+              expr: 'count_over_time({job="k8s-events"} |= `Evicted` [5m])'
+              queryType: instant
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
