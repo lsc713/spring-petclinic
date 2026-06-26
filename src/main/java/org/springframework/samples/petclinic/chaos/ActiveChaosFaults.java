@@ -16,7 +16,9 @@
 package org.springframework.samples.petclinic.chaos;
 
 import java.net.ConnectException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessResourceFailureException;
 import org.springframework.http.HttpStatus;
@@ -49,10 +51,32 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String DB_DOWN = "dbDown";
 
+	/**
+	 * Scenario key: thread-pool saturation — armed owner searches park their worker
+	 * thread.
+	 */
+	public static final String THREAD_STARVATION = "threadStarvation";
+
+	/** Scenario key: deadlock — armed owner searches spawn two threads that deadlock. */
+	public static final String DEADLOCK = "deadlock";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
+	private static final Object LOCK_A = new Object();
+
+	private static final Object LOCK_B = new Object();
+
+	private final AtomicBoolean deadlockTriggered = new AtomicBoolean(false);
+
 	private final ChaosState state;
+
+	@Value("${chaos.thread-block-ms:10000}")
+	private long threadBlockMs = 10000;
+
+	void setThreadBlockMs(long threadBlockMs) {
+		this.threadBlockMs = threadBlockMs;
+	}
 
 	public ActiveChaosFaults(ChaosState state) {
 		this.state = state;
@@ -101,6 +125,54 @@ public class ActiveChaosFaults implements ChaosFaults {
 			// the correct triage routes to infra, not an app code PR.
 			throw new DataAccessResourceFailureException("could not open JDBC connection",
 					new ConnectException("Connection refused"));
+		}
+	}
+
+	@Override
+	public void maybeBlockWorker() {
+		if (this.state.isArmed(THREAD_STARVATION)) {
+			// Seeded saturation: hold the worker thread so concurrent load drains a small
+			// pool. The cause is only localizable from a thread dump (N threads parked
+			// here).
+			sleepQuietly(this.threadBlockMs);
+		}
+	}
+
+	@Override
+	public void triggerDeadlock() {
+		if (this.state.isArmed(DEADLOCK) && this.deadlockTriggered.compareAndSet(false, true)) {
+			// Seeded deadlock: two daemon threads lock LOCK_A/LOCK_B in opposite order
+			// with
+			// a gap between, so each holds one monitor and blocks on the other forever.
+			Thread first = new Thread(() -> {
+				synchronized (LOCK_A) {
+					sleepQuietly(200);
+					synchronized (LOCK_B) {
+						// unreachable while the second thread holds LOCK_B
+					}
+				}
+			}, "chaos-deadlock-1");
+			Thread second = new Thread(() -> {
+				synchronized (LOCK_B) {
+					sleepQuietly(200);
+					synchronized (LOCK_A) {
+						// unreachable while the first thread holds LOCK_A
+					}
+				}
+			}, "chaos-deadlock-2");
+			first.setDaemon(true);
+			second.setDaemon(true);
+			first.start();
+			second.start();
+		}
+	}
+
+	private static void sleepQuietly(long millis) {
+		try {
+			Thread.sleep(millis);
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
 		}
 	}
 

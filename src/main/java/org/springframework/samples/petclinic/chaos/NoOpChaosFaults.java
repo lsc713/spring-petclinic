@@ -51,4 +51,14 @@ public class NoOpChaosFaults implements ChaosFaults {
 		// Production: the database is reachable; nothing to do.
 	}
 
+	@Override
+	public void maybeBlockWorker() {
+		// Production: never blocks the worker thread.
+	}
+
+	@Override
+	public void triggerDeadlock() {
+		// Production: never creates a deadlock.
+	}
+
 }

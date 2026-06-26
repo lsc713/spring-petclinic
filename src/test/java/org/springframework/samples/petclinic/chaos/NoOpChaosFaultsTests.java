@@ -39,4 +39,28 @@ class NoOpChaosFaultsTests {
 		this.faults.assertDatabaseReachable();
 	}
 
+	@Test
+	void maybeBlockWorkerIsNoOp() {
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isLessThan(100);
+	}
+
+	@Test
+	void triggerDeadlockIsNoOp() throws InterruptedException {
+		long before = chaosDeadlockThreadCount();
+		this.faults.triggerDeadlock();
+		Thread.sleep(200);
+		assertThat(chaosDeadlockThreadCount()).isEqualTo(before);
+	}
+
+	private static long chaosDeadlockThreadCount() {
+		return Thread.getAllStackTraces()
+			.keySet()
+			.stream()
+			.filter(t -> t.getName().startsWith("chaos-deadlock"))
+			.count();
+	}
+
 }

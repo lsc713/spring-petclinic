@@ -6,6 +6,8 @@ scrape_configs:
   - job_name: petclinic
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      # Actuator is served on the separate management port (see application-chaos.properties:
+      # management.server.port=8081) so metrics stay scrapeable while the main 8080 pool saturates.
+      - targets: ["host.docker.internal:8081"]
         labels:
           service: petclinic

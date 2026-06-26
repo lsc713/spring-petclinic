@@ -62,4 +62,22 @@ public interface ChaosFaults {
 	 */
 	void assertDatabaseReachable();
 
+	/**
+	 * Hook at the start of the owner-search handler (thread-pool saturation fault).
+	 * Production behavior: returns immediately. Under the {@code threadStarvation}
+	 * scenario it parks the calling worker thread for a bounded duration, so concurrent
+	 * load exhausts a small pool — a saturation whose cause is only visible in a thread
+	 * dump, not in the latency/error metrics.
+	 */
+	void maybeBlockWorker();
+
+	/**
+	 * Hook on the owner-search handler (deadlock fault). Production behavior: does
+	 * nothing. Under the {@code deadlock} scenario the first armed invocation spawns two
+	 * daemon threads that acquire two monitors in opposite order, producing a permanent
+	 * Java-level deadlock — invisible to latency/error metrics, localizable only from a
+	 * thread dump. Idempotent and non-blocking for the caller.
+	 */
+	void triggerDeadlock();
+
 }

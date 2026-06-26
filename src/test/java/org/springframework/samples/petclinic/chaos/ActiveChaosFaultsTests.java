@@ -15,7 +15,9 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import java.lang.Thread.State;
 import java.net.ConnectException;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -61,6 +63,63 @@ class ActiveChaosFaultsTests {
 		assertThatExceptionOfType(DataAccessResourceFailureException.class)
 			.isThrownBy(() -> this.faults.assertDatabaseReachable())
 			.withCauseInstanceOf(ConnectException.class);
+	}
+
+	@Test
+	void armedThreadStarvationBlocksWorker() {
+		this.faults.setThreadBlockMs(150);
+		this.state.arm(ActiveChaosFaults.THREAD_STARVATION);
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isGreaterThanOrEqualTo(150);
+	}
+
+	@Test
+	void disarmedThreadStarvationDoesNotBlock() {
+		this.faults.setThreadBlockMs(5000);
+		long start = System.nanoTime();
+		this.faults.maybeBlockWorker();
+		long elapsedMs = (System.nanoTime() - start) / 1_000_000;
+		assertThat(elapsedMs).isLessThan(100);
+	}
+
+	@Test
+	void armedDeadlockBlocksTwoNamedThreads() throws InterruptedException {
+		this.state.arm(ActiveChaosFaults.DEADLOCK);
+		this.faults.triggerDeadlock();
+
+		// The two daemon threads must reach BLOCKED state on each other's monitor.
+		int blocked = 0;
+		for (int i = 0; i < 50 && blocked < 2; i++) {
+			blocked = 0;
+			for (Map.Entry<Thread, StackTraceElement[]> e : Thread.getAllStackTraces().entrySet()) {
+				Thread t = e.getKey();
+				if (t.getName().startsWith("chaos-deadlock") && t.getState() == State.BLOCKED) {
+					blocked++;
+				}
+			}
+			if (blocked < 2) {
+				Thread.sleep(100);
+			}
+		}
+		assertThat(blocked).isGreaterThanOrEqualTo(2);
+	}
+
+	@Test
+	void disarmedDeadlockSpawnsNoThreads() throws InterruptedException {
+		long before = chaosDeadlockThreadCount();
+		this.faults.triggerDeadlock();
+		Thread.sleep(200);
+		assertThat(chaosDeadlockThreadCount()).isEqualTo(before);
+	}
+
+	private static long chaosDeadlockThreadCount() {
+		return Thread.getAllStackTraces()
+			.keySet()
+			.stream()
+			.filter(t -> t.getName().startsWith("chaos-deadlock"))
+			.count();
 	}
 
 }

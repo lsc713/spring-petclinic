@@ -15,8 +15,12 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 class ChaosProfileGatingTests {
 
@@ -39,6 +43,17 @@ class ChaosProfileGatingTests {
 			assertThatBeanPresent(context, ActiveChaosFaults.class, true);
 			assertThatBeanPresent(context, ChaosController.class, true);
 		});
+	}
+
+	@Test
+	void chaosProfileWiresDeadlockProbe() {
+		// DeadlockProbe has two constructors; without @Autowired on the injection
+		// constructor Spring cannot select one and the context fails to start. This boots
+		// a minimal context wiring it exactly as Spring does, guarding that regression.
+		new ApplicationContextRunner().withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+			.withUserConfiguration(DeadlockProbe.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(DeadlockProbe.class));
 	}
 
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
