@@ -68,4 +68,9 @@ class NoOpChaosFaultsTests {
 		assertThat(this.faults.useRegressedOwnerQuery()).isFalse();
 	}
 
+	@Test
+	void shouldOomKillIsAlwaysFalse() {
+		assertThat(new NoOpChaosFaults().shouldOomKill()).isFalse();
+	}
+
 }

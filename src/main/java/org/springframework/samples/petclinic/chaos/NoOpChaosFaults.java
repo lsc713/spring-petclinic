@@ -67,4 +67,10 @@ public class NoOpChaosFaults implements ChaosFaults {
 		return false;
 	}
 
+	@Override
+	public boolean shouldOomKill() {
+		// Production: never exhausts memory.
+		return false;
+	}
+
 }

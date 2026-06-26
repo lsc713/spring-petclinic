@@ -133,4 +133,13 @@ class ActiveChaosFaultsTests {
 		assertThat(this.faults.useRegressedOwnerQuery()).isFalse();
 	}
 
+	@Test
+	void shouldOomKillIsTrueOnlyWhenArmed() {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		assertThat(faults.shouldOomKill()).isFalse();
+		state.arm(ActiveChaosFaults.OOM_KILL);
+		assertThat(faults.shouldOomKill()).isTrue();
+	}
+
 }
