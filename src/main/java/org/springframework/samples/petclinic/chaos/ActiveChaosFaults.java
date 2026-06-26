@@ -60,6 +60,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	/** Scenario key: deadlock — armed owner searches spawn two threads that deadlock. */
 	public static final String DEADLOCK = "deadlock";
 
+	/**
+	 * Scenario key: downstream-latency — armed owner-details calls a slow downstream
+	 * dependency.
+	 */
+	public static final String DOWNSTREAM_LATENCY = "downstreamLatency";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
