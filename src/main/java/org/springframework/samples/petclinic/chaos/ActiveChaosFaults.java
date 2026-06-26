@@ -71,6 +71,9 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String QUERY_PLAN_REGRESSION = "queryPlanRegression";
 
+	/** Scenario key: OOM-kill — armed pod exhausts memory and is killed by the kernel. */
+	public static final String OOM_KILL = "oomKill";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
@@ -181,6 +184,11 @@ public class ActiveChaosFaults implements ChaosFaults {
 	@Override
 	public boolean useRegressedOwnerQuery() {
 		return this.state.isArmed(QUERY_PLAN_REGRESSION);
+	}
+
+	@Override
+	public boolean shouldOomKill() {
+		return this.state.isArmed(OOM_KILL);
 	}
 
 	private static void sleepQuietly(long millis) {

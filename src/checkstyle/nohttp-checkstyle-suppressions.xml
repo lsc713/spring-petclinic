@@ -14,4 +14,5 @@
 	<suppress files="scripts[\\/].*" checks="NoHttp"/>
 	<suppress files="observability[\\/].*" checks="NoHttp"/>
 	<suppress files="[.]superpowers[\\/].*" checks="NoHttp"/>
+	<suppress files="k8s[\\/].*" checks="NoHttp"/>
 </suppressions>

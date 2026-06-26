@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: unschedulable-probe
+  namespace: petclinic-bench
+  labels:
+    app: unschedulable-probe
+spec:
+  # No node can satisfy 1000Gi of memory, so the scheduler emits FailedScheduling
+  # ("Insufficient memory") and the pod stays Pending — a pure scheduler event, no app.
+  containers:
+    - name: pause
+      image: registry.k8s.io/pause:3.9
+      resources:
+        requests:
+          memory: "1000Gi"
+        limits:
+          memory: "1000Gi"
