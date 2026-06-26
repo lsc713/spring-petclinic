@@ -7,6 +7,7 @@ set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 APP=http://localhost:8080
+MGMT=http://localhost:8081
 PROM=http://localhost:9090
 GRAFANA=http://admin:admin@localhost:3000
 
@@ -36,7 +37,7 @@ done
 echo "    ThreadPoolSaturation FIRING ✅"
 
 echo "==> W5c-2: thread dump localizes the cause (threads parked in maybeBlockWorker)"
-parked=$(curl -s "$APP/actuator/threaddump" \
+parked=$(curl -s "$MGMT/actuator/threaddump" \
   | jq '[.threads[] | select(any(.stackTrace[]?; .methodName=="maybeBlockWorker"))] | length')
 echo "    threads parked in maybeBlockWorker = $parked (expected >= 5)"
 kill $K6_PID 2>/dev/null || true

@@ -6,6 +6,7 @@
 set -euo pipefail
 
 APP=http://localhost:8080
+MGMT=http://localhost:8081
 GRAFANA=http://admin:admin@localhost:3000
 
 echo "==> arming deadlock"
@@ -26,7 +27,7 @@ done
 echo "    DeadlockDetected FIRING ✅"
 
 echo "==> W5c-4: thread dump localizes the deadlock (BLOCKED chaos-deadlock threads)"
-blocked=$(curl -s "$APP/actuator/threaddump" \
+blocked=$(curl -s "$MGMT/actuator/threaddump" \
   | jq '[.threads[] | select(.threadName | startswith("chaos-deadlock")) | select(.threadState=="BLOCKED")] | length')
 echo "    BLOCKED chaos-deadlock threads = $blocked (expected >= 2)"
 awk "BEGIN{exit !($blocked+0 >= 2)}" || { echo "FAIL: thread dump did not localize the deadlock (blocked=$blocked)"; exit 1; }
