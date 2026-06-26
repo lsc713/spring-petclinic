@@ -19,10 +19,12 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.samples.petclinic.chaos.ChaosFaults;
+import org.springframework.samples.petclinic.chaos.DownstreamClient;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -55,9 +57,13 @@ class OwnerController {
 
 	private final ChaosFaults chaosFaults;
 
-	public OwnerController(OwnerRepository owners, ChaosFaults chaosFaults) {
+	private final ObjectProvider<DownstreamClient> downstream;
+
+	public OwnerController(OwnerRepository owners, ChaosFaults chaosFaults,
+			ObjectProvider<DownstreamClient> downstream) {
 		this.owners = owners;
 		this.chaosFaults = chaosFaults;
+		this.downstream = downstream;
 	}
 
 	@InitBinder
@@ -177,6 +183,7 @@ class OwnerController {
 	@GetMapping("/owners/{ownerId}")
 	public ModelAndView showOwner(@PathVariable("ownerId") int ownerId) {
 		this.chaosFaults.assertDatabaseReachable();
+		this.downstream.ifAvailable(DownstreamClient::callIfArmed);
 		ModelAndView mav = new ModelAndView("owners/ownerDetails");
 		Optional<Owner> optionalOwner = this.owners.findById(ownerId);
 		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
