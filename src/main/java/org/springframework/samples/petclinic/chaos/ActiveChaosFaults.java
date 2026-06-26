@@ -66,6 +66,11 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String DOWNSTREAM_LATENCY = "downstreamLatency";
 
+	/**
+	 * Scenario key: query-plan pathology — owner search uses a leading-wildcard Seq Scan.
+	 */
+	public static final String QUERY_PLAN_REGRESSION = "queryPlanRegression";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
@@ -171,6 +176,11 @@ public class ActiveChaosFaults implements ChaosFaults {
 			first.start();
 			second.start();
 		}
+	}
+
+	@Override
+	public boolean useRegressedOwnerQuery() {
+		return this.state.isArmed(QUERY_PLAN_REGRESSION);
 	}
 
 	private static void sleepQuietly(long millis) {

@@ -63,4 +63,9 @@ class NoOpChaosFaultsTests {
 			.count();
 	}
 
+	@Test
+	void useRegressedOwnerQueryIsAlwaysFalse() {
+		assertThat(this.faults.useRegressedOwnerQuery()).isFalse();
+	}
+
 }

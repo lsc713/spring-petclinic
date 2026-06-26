@@ -122,4 +122,15 @@ class ActiveChaosFaultsTests {
 			.count();
 	}
 
+	@Test
+	void armedQueryPlanRegressionRoutesToRegressedQuery() {
+		this.state.arm(ActiveChaosFaults.QUERY_PLAN_REGRESSION);
+		assertThat(this.faults.useRegressedOwnerQuery()).isTrue();
+	}
+
+	@Test
+	void disarmedQueryPlanRegressionUsesIndexedQuery() {
+		assertThat(this.faults.useRegressedOwnerQuery()).isFalse();
+	}
+
 }
