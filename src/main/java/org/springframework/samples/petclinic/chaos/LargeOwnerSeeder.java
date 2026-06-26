@@ -48,6 +48,13 @@ public class LargeOwnerSeeder implements ApplicationRunner {
 
 	@Override
 	public void run(ApplicationArguments args) {
+		// A varchar_pattern_ops index lets the disarmed prefix LIKE 'term%' use an Index
+		// Scan
+		// under the default (non-C) collation; without it the prefix query also Seq-Scans
+		// and
+		// the disarmed-vs-armed contrast is lost.
+		this.jdbcTemplate
+			.execute("CREATE INDEX IF NOT EXISTS owners_last_name_pattern ON owners (last_name varchar_pattern_ops)");
 		Integer count = this.jdbcTemplate.queryForObject("SELECT count(*) FROM owners", Integer.class);
 		if (count != null && count >= TARGET_ROWS) {
 			log.info("owners already has " + count + " rows; skipping bulk seed.");
@@ -57,6 +64,9 @@ public class LargeOwnerSeeder implements ApplicationRunner {
 				"INSERT INTO owners (first_name, last_name, address, city, telephone) "
 						+ "SELECT 'Bulk', 'Bulk' || g, 'addr', 'city', '0000000000' FROM generate_series(1, ?) g",
 				TARGET_ROWS);
+		// Refresh planner statistics so the prefix query reliably picks the pattern
+		// index.
+		this.jdbcTemplate.execute("ANALYZE owners");
 		log.info("Seeded " + inserted + " bulk owner rows for the query-plan regression bench.");
 	}
 
