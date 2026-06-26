@@ -61,4 +61,10 @@ public class NoOpChaosFaults implements ChaosFaults {
 		// Production: never creates a deadlock.
 	}
 
+	@Override
+	public boolean useRegressedOwnerQuery() {
+		// Production: always the indexed prefix query.
+		return false;
+	}
+
 }

@@ -435,3 +435,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [1]
+  - orgId: 1
+    name: chaos-query-plan
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-query-plan-regression
+        title: QueryPlanRegression
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Owner-search query regressed to a Seq Scan (slow, but the latency metric does not say why)
+          explain: "Augmentation signal: the EXPLAIN plan logged to Loki ({service=\"petclinic\"} |= \"Seq Scan on owners\") localizes the cause — a leading-wildcard LIKE cannot use the last_name index."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'max(petclinic_query_seqscan{check="ownerSearch",service="petclinic"})'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]

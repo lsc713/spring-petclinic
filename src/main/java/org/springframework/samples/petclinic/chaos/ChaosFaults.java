@@ -80,4 +80,14 @@ public interface ChaosFaults {
 	 */
 	void triggerDeadlock();
 
+	/**
+	 * Whether the owner search should run the index-defeating query form (query-plan
+	 * pathology). Production behavior: {@code false} (prefix search, uses the index).
+	 * Under the {@code queryPlanRegression} scenario it returns {@code true}, routing the
+	 * search through a leading-wildcard {@code LIKE '%term%'} that forces a Seq Scan.
+	 * @return true only when the queryPlanRegression scenario is armed under the chaos
+	 * profile
+	 */
+	boolean useRegressedOwnerQuery();
+
 }

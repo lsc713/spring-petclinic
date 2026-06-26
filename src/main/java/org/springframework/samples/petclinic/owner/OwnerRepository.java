@@ -45,6 +45,17 @@ public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 	Page<Owner> findByLastNameStartingWith(String lastName, Pageable pageable);
 
 	/**
+	 * Retrieve {@link Owner}s whose last name <i>contains</i> the given value
+	 * ({@code LIKE '%name%'}). The leading wildcard cannot use the {@code last_name}
+	 * index, so this is the query-plan-regression (Seq Scan) form used by the chaos bench
+	 * — not a production search.
+	 * @param lastName value to search for
+	 * @param pageable paging
+	 * @return a page of matching {@link Owner}s
+	 */
+	Page<Owner> findByLastNameContaining(String lastName, Pageable pageable);
+
+	/**
 	 * Retrieve an {@link Owner} from the data store by id.
 	 * <p>
 	 * This method returns an {@link Optional} containing the {@link Owner} if found. If
