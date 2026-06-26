@@ -381,3 +381,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+  - orgId: 1
+    name: chaos-downstream
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-downstream-latency
+        title: DownstreamLatency
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Owner-details p99 latency over threshold — slow, but the metric does not say WHERE
+          trace: "Augmentation signal: the distributed trace in Tempo localizes the slow span to the downstream /delay call (vs the fast JDBC span)."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{uri="/owners/{ownerId}",service="petclinic"}[1m])))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [1]
