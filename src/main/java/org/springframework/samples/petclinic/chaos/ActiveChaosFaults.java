@@ -232,7 +232,10 @@ public class ActiveChaosFaults implements ChaosFaults {
 			}
 			// Reserve a slot atomically so at most leakCap connections are ever borrowed,
 			// even under concurrent searches; this stops the borrow below from piling up
-			// extra blocking getConnection() calls past the cap.
+			// extra blocking getConnection() calls past the cap. Assumes arm/disarm is
+			// quiescent: a disarm racing an in-flight borrow may briefly orphan one held
+			// connection, but it stays tracked in `leaked` and is closed on the next
+			// release — bounded and self-healing, never an accounting escape.
 			if (this.leakedReservations.incrementAndGet() > this.leakCap) {
 				this.leakedReservations.decrementAndGet();
 				return;
