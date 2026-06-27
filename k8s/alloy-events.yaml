@@ -54,6 +54,23 @@ data:
         url = "http://host.docker.internal:3100/loki/api/v1/push"
       }
     }
+
+    // OOMKilled is not in the k8s event stream (the kubelet emits no OOM event); it lives in
+    // pod status, which kube-state-metrics exposes as a metric. Scrape KSM and remote-write to
+    // the host Prometheus so the KubeOOMKilled alert can fire. See k8s/kube-state-metrics.yaml.
+    prometheus.scrape "ksm" {
+      targets = [{
+        __address__ = "kube-state-metrics.petclinic-bench.svc:8080",
+      }]
+      forward_to      = [prometheus.remote_write.host.receiver]
+      scrape_interval = "15s"
+    }
+
+    prometheus.remote_write "host" {
+      endpoint {
+        url = "http://host.docker.internal:9090/api/v1/write"
+      }
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment

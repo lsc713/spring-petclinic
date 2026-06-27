@@ -15,12 +15,12 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.lang.reflect.Field;
 import java.util.Map;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import sun.misc.Unsafe;
 
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,12 +28,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Class-E infrastructure fault trigger: when the {@code oomKill} scenario is armed, this
- * endpoint allocates and retains heap, touching every page, until resident memory exceeds
- * the pod's memory limit and the kernel OOM-kills the container (SIGKILL — no
- * {@code OutOfMemoryError}, no application stack trace). The cause is visible only in the
- * Kubernetes event/status stream, not in app logs. Registered only under the
- * {@code chaos} profile (404 otherwise). When disarmed it is a pure no-op, so it is safe
- * to slice-test.
+ * endpoint allocates native (off-heap) memory and writes every page, driving the
+ * container's resident set past the pod memory limit until the kernel OOM-kills it
+ * (SIGKILL — no {@code OutOfMemoryError}, no application stack trace). The cause is
+ * visible only in the Kubernetes event/status stream, not in app logs.
+ * <p>
+ * Native memory (via {@code sun.misc.Unsafe#allocateMemory}) is used deliberately rather
+ * than heap or a direct {@link java.nio.ByteBuffer}: the JVM bounds both (heap by
+ * {@code -Xmx}/{@code MaxRAMPercentage}, direct memory by
+ * {@code -XX:MaxDirectMemorySize}), so exhausting either throws an application-visible
+ * {@code OutOfMemoryError} before the resident set crosses the cgroup limit. Raw native
+ * allocation is unbounded by the JVM: the heap stays small, the JVM never throws, and
+ * only this resident growth crosses the cgroup boundary — producing a genuine kernel
+ * kill, not a JVM-visible error.
+ * <p>
+ * Registered only under the {@code chaos} profile (404 otherwise). When disarmed it is a
+ * pure no-op, so it is safe to slice-test.
  */
 @RestController
 @Profile("chaos")
@@ -42,16 +52,7 @@ class OomKillEndpoint {
 	/** 32 MiB per allocated chunk. */
 	private static final int CHUNK_BYTES = 32 * 1024 * 1024;
 
-	/**
-	 * Touch one byte per 4 KiB page so the pages become resident (not lazily
-	 * zero-backed).
-	 */
-	private static final int PAGE_BYTES = 4096;
-
 	private static final Log log = LogFactory.getLog(OomKillEndpoint.class);
-
-	/** Retained so the chunks are never garbage-collected. */
-	private final List<byte[]> retained = new ArrayList<>();
 
 	private final ChaosFaults chaosFaults;
 
@@ -64,18 +65,25 @@ class OomKillEndpoint {
 		if (!this.chaosFaults.shouldOomKill()) {
 			return Map.of("armed", false, "allocatedMb", 0);
 		}
-		log.warn("oomKill armed: exhausting heap to trigger a kernel OOM-kill (the container will be SIGKILLed)");
-		int allocatedMb = 0;
-		// Allocate until the kernel kills us. -Xmx is set above the pod memory limit, so
-		// the
-		// cgroup OOM-killer fires before the JVM would throw OutOfMemoryError.
+		log.warn("oomKill armed: allocating native (off-heap) memory to drive resident set past the "
+				+ "cgroup limit; the kernel will SIGKILL this container (no OutOfMemoryError, no app stack trace)");
+		Unsafe unsafe = unsafe();
+		// Allocate and fully write native chunks, never freeing them, until
+		// resident memory crosses the cgroup limit and the OOM-killer fires.
 		while (true) {
-			byte[] chunk = new byte[CHUNK_BYTES];
-			for (int i = 0; i < chunk.length; i += PAGE_BYTES) {
-				chunk[i] = 1;
-			}
-			this.retained.add(chunk);
-			allocatedMb += CHUNK_BYTES / (1024 * 1024);
+			long address = unsafe.allocateMemory(CHUNK_BYTES);
+			unsafe.setMemory(address, CHUNK_BYTES, (byte) 1);
+		}
+	}
+
+	private static Unsafe unsafe() {
+		try {
+			Field field = Unsafe.class.getDeclaredField("theUnsafe");
+			field.setAccessible(true);
+			return (Unsafe) field.get(null);
+		}
+		catch (ReflectiveOperationException ex) {
+			throw new IllegalStateException("sun.misc.Unsafe is unavailable", ex);
 		}
 	}
 

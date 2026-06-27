@@ -505,20 +505,21 @@ groups:
           category: infrastructure
         annotations:
           summary: A pod was OOMKilled by the kernel — the app log just stops, no stack trace
-          event: "Augmentation signal: the Kubernetes event stream ({job=\"k8s-events\"} |~ \"OOMKill\") names the cause as a container memory-limit kill (infrastructure), not an application defect."
+          event: "Augmentation signal: OOMKilled is not in the k8s event stream (the kubelet emits no OOM event); it lives in pod status, surfaced via kube-state-metrics (kube_pod_container_status_last_terminated_reason{reason=\"OOMKilled\"}). The cause is a kernel memory-limit kill (infrastructure), not an application defect."
         data:
           - refId: A
             relativeTimeRange:
               from: 300
               to: 0
-            datasourceUid: loki
+            datasourceUid: prometheus
             model:
               refId: A
               datasource:
-                type: loki
-                uid: loki
-              expr: 'count_over_time({job="k8s-events"} |~ `OOMKill` [5m])'
-              queryType: instant
+                type: prometheus
+                uid: prometheus
+              expr: 'max_over_time(kube_pod_container_status_last_terminated_reason{reason="OOMKilled", namespace="petclinic-bench"}[5m])'
+              instant: true
+              range: false
           - refId: B
             datasourceUid: __expr__
             model:
