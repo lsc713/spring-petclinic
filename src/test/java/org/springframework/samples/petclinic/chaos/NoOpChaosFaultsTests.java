@@ -73,4 +73,10 @@ class NoOpChaosFaultsTests {
 		assertThat(new NoOpChaosFaults().shouldOomKill()).isFalse();
 	}
 
+	@Test
+	void leakConnectionIfArmedIsNoOp() {
+		new NoOpChaosFaults().leakConnectionIfArmed();
+		// no DataSource touched, no exception — production never leaks
+	}
+
 }

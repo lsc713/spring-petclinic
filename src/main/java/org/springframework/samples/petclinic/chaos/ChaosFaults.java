@@ -100,4 +100,17 @@ public interface ChaosFaults {
 	 */
 	boolean shouldOomKill();
 
+	/**
+	 * Hook on the owner-search handler (connection-pool-exhaustion fault). Production
+	 * behavior: does nothing. Under the {@code connectionPoolExhaustion} scenario each
+	 * armed search borrows a HikariCP connection and never returns it; after the pool's
+	 * worth of borrows the pool is drained, so a search's own query blocks for the
+	 * connection timeout and fails with a 5xx whose root cause is the app exhausting its
+	 * own pool — not the database. Disarming releases the held connections on the next
+	 * search. Localized by the HikariCP pool metrics
+	 * ({@code hikaricp_connections_pending/active/timeout}), not by latency/error
+	 * metrics.
+	 */
+	void leakConnectionIfArmed();
+
 }

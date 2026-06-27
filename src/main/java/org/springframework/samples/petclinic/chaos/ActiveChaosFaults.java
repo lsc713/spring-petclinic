@@ -16,8 +16,16 @@
 package org.springframework.samples.petclinic.chaos;
 
 import java.net.ConnectException;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.sql.DataSource;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.DataAccessResourceFailureException;
@@ -74,6 +82,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	/** Scenario key: OOM-kill — armed pod exhausts memory and is killed by the kernel. */
 	public static final String OOM_KILL = "oomKill";
 
+	/**
+	 * Scenario key: connection-pool exhaustion — armed owner searches leak HikariCP
+	 * connections until the pool is drained and queries time out.
+	 */
+	public static final String CONNECTION_POOL_EXHAUSTION = "connectionPoolExhaustion";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
@@ -90,6 +104,22 @@ public class ActiveChaosFaults implements ChaosFaults {
 
 	void setThreadBlockMs(long threadBlockMs) {
 		this.threadBlockMs = threadBlockMs;
+	}
+
+	@Value("${chaos.pool.leak-cap:5}")
+	private int leakCap = 5;
+
+	private DataSource dataSource;
+
+	private final List<Connection> leaked = Collections.synchronizedList(new ArrayList<>());
+
+	@Autowired(required = false)
+	void setDataSource(DataSource dataSource) {
+		this.dataSource = dataSource;
+	}
+
+	void setLeakCap(int leakCap) {
+		this.leakCap = leakCap;
 	}
 
 	public ActiveChaosFaults(ChaosState state) {
@@ -189,6 +219,43 @@ public class ActiveChaosFaults implements ChaosFaults {
 	@Override
 	public boolean shouldOomKill() {
 		return this.state.isArmed(OOM_KILL);
+	}
+
+	@Override
+	public void leakConnectionIfArmed() {
+		if (this.state.isArmed(CONNECTION_POOL_EXHAUSTION)) {
+			if (this.dataSource != null && this.leaked.size() < this.leakCap) {
+				try {
+					// Seeded connection leak: borrow a pooled connection and never return
+					// it. After leakCap borrows the HikariCP pool is drained, so a
+					// search's
+					// own query blocks for connection-timeout and fails — the cause is
+					// the
+					// app exhausting its own pool, localized by hikaricp_connections_*.
+					this.leaked.add(this.dataSource.getConnection());
+				}
+				catch (SQLException ex) {
+					// pool already drained — nothing left to leak
+				}
+			}
+		}
+		else {
+			releaseLeaked();
+		}
+	}
+
+	private void releaseLeaked() {
+		synchronized (this.leaked) {
+			for (Connection connection : this.leaked) {
+				try {
+					connection.close();
+				}
+				catch (SQLException ex) {
+					// best-effort release
+				}
+			}
+			this.leaked.clear();
+		}
 	}
 
 	private static void sleepQuietly(long millis) {
