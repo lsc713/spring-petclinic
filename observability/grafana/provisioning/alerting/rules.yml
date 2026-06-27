@@ -639,3 +639,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+  - orgId: 1
+    name: chaos-connection-pool
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-connection-pool-exhausted
+        title: ConnectionPoolExhausted
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: petclinic
+        annotations:
+          summary: HikariCP connection pool exhausted — searches fail to acquire a DB connection (the app drained its own pool, the DB is healthy)
+          augmentation: "Augmentation signal: hikaricp_connections_timeout_total rising with hikaricp_connections_active pinned at hikaricp_connections_max localizes the cause to pool exhaustion (a leak in app code), NOT a slow/down database. Misdiagnosis trap: looks like DB trouble; route to the app, not infra — the inverse of InfraDbDown."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'sum(increase(hikaricp_connections_timeout_total{service="petclinic"}[5m]))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
