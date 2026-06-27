@@ -15,11 +15,12 @@ set -euo pipefail
 NS=petclinic-bench
 GRAFANA=http://admin:admin@localhost:3000
 K8S_DIR="$(cd "$(dirname "$0")/../../k8s" && pwd)"
+CURL_IMAGE=curlimages/curl:8.11.1  # in-cluster one-shot curl for arming/triggering the app
 
-loki_count() { # $1 = LogQL selector+filter; echoes the number of matching lines
+loki_count() { # $1 = LogQL selector+filter; echoes the number of matching lines (0 on any error)
   curl -s -G "$GRAFANA/api/datasources/proxy/uid/loki/loki/api/v1/query_range" \
-    --data-urlencode "query=$1" --data-urlencode 'limit=20' \
-    | jq -r '[.data.result[]?.values[]?] | length'
+    --data-urlencode "query=$1" --data-urlencode 'limit=20' 2>/dev/null \
+    | jq -r '[.data.result[]?.values[]?] | length' 2>/dev/null || echo 0
 }
 
 alert_state() { # $1 = alertname; echoes the alert state ("" if absent)
@@ -27,9 +28,11 @@ alert_state() { # $1 = alertname; echoes the alert state ("" if absent)
     | jq -r --arg n "$1" 'first(.[] | select(.labels.alertname==$n) | .status.state) // ""'
 }
 
-wait_alert() { # $1 = alertname; polls up to 90s for state=active
+wait_alert() { # $1 = alertname; polls up to 150s for state=active
+  # 150s absorbs the worst case: a 30s rule-eval interval plus Grafana->alertmanager state
+  # propagation, on top of the signal already being confirmed present before this is called.
   local s=""
-  for _ in $(seq 1 18); do
+  for _ in $(seq 1 30); do
     s=$(alert_state "$1"); [ "$s" = "active" ] && { echo "    $1 FIRING ✅"; return 0; }
     sleep 5
   done
@@ -45,18 +48,18 @@ for d in build/libs /tmp/petclinic-build/libs; do [ -d "$d" ] && { LIBS="$d"; br
 [ -n "$LIBS" ] || { echo "FAIL: no libs dir with the boot jar"; exit 1; }
 docker build -t spring-petclinic:w5d -f "$K8S_DIR/Dockerfile" "$LIBS"
 
+# Clean slate so every run validates from scratch: a prior run's OOMKilled pod status would
+# otherwise leave kube_pod_container_status_last_terminated_reason=1, making KubeOOMKilled pass
+# before this run does anything. Deleting the namespace drops that state (and KSM redeploys clean).
+echo "==> clean slate: removing any prior bench namespace"
+kubectl delete ns "$NS" --ignore-not-found --wait --timeout=120s
+
 echo "==> applying namespace, app, in-cluster Alloy, kube-state-metrics"
 kubectl apply -f "$K8S_DIR/namespace.yaml" -f "$K8S_DIR/petclinic-deployment.yaml" \
   -f "$K8S_DIR/alloy-events.yaml" -f "$K8S_DIR/kube-state-metrics.yaml"
 kubectl -n "$NS" rollout status deploy/petclinic --timeout=150s
 kubectl -n "$NS" rollout status deploy/alloy-events --timeout=120s
 kubectl -n "$NS" rollout status deploy/kube-state-metrics --timeout=120s
-
-echo "==> port-forwarding the app (8080) for chaos arming"
-kubectl -n "$NS" port-forward svc/petclinic 8080:8080 >/tmp/w5d-pf.log 2>&1 &
-PF_PID=$!
-trap 'kill $PF_PID 2>/dev/null || true' EXIT
-for _ in $(seq 1 20); do curl -fsS http://localhost:8080/chaos/status >/dev/null 2>&1 && break; sleep 1; done
 
 # ---------- E2: FailedScheduling (no app involved) ----------
 echo "==> E2: applying the unschedulable pod (expect FailedScheduling)"
@@ -79,11 +82,17 @@ echo "    Evicted event in Loki = $n ✅"
 wait_alert KubePodEvicted
 
 # ---------- E1: OOMKilled (kernel kill of the app container) ----------
-# The app pod was untouched by E2/E3, so the port-forward opened above is still valid.
+# Arm and trigger from INSIDE the cluster (one-shot curl pods hitting the Service), not via
+# kubectl port-forward: a forward to Docker Desktop is flaky — a single dropped connection kills
+# it, which would take the arm POST down with it under pipefail.
 echo "==> E1: arming oomKill and exhausting memory (expect a kernel OOMKill)"
-curl -s -XPOST http://localhost:8080/chaos/oomKill/arm | jq .
-# The endpoint allocates until the kernel SIGKILLs the container; curl drops the connection.
-curl -s -XPOST --max-time 60 http://localhost:8080/chaos/oom-kill >/dev/null 2>&1 || true
+kubectl -n "$NS" run chaos-armer --rm -i --restart=Never --image="$CURL_IMAGE" \
+  --command -- curl -s -XPOST http://petclinic:8080/chaos/oomKill/arm 2>&1 \
+  | grep -q '"oomKill":true' || { echo "FAIL: could not arm oomKill"; exit 1; }
+echo "    oomKill armed ✅"
+# The endpoint allocates until the kernel SIGKILLs the container; curl's connection then drops.
+kubectl -n "$NS" run chaos-trigger --rm -i --restart=Never --image="$CURL_IMAGE" \
+  --command -- curl -s --max-time 60 -XPOST http://petclinic:8080/chaos/oom-kill >/dev/null 2>&1 || true
 echo "    waiting for the container to report OOMKilled (ground truth: app-blind SIGKILL)"
 reason=""
 for _ in $(seq 1 24); do

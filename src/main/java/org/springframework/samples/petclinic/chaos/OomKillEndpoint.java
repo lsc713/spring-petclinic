@@ -34,12 +34,13 @@ import org.springframework.web.bind.annotation.RestController;
  * visible only in the Kubernetes event/status stream, not in app logs.
  * <p>
  * Native memory (via {@code sun.misc.Unsafe#allocateMemory}) is used deliberately rather
- * than heap or direct {@link java.nio.ByteBuffer}: both heap ({@code -Xmx}) and direct
- * memory ({@code -XX:MaxDirectMemorySize}) are counted by the Paketo memory calculator,
- * so sizing either above the pod limit makes the buildpack launcher refuse to start the
- * JVM (a crash-loop before any fault can run). Raw native allocation is invisible to that
- * calculator: the JVM boots cleanly within the limit, and only this resident growth
- * crosses the cgroup boundary — producing a genuine kernel kill, not a JVM-visible error.
+ * than heap or a direct {@link java.nio.ByteBuffer}: the JVM bounds both (heap by
+ * {@code -Xmx}/{@code MaxRAMPercentage}, direct memory by
+ * {@code -XX:MaxDirectMemorySize}), so exhausting either throws an application-visible
+ * {@code OutOfMemoryError} before the resident set crosses the cgroup limit. Raw native
+ * allocation is unbounded by the JVM: the heap stays small, the JVM never throws, and
+ * only this resident growth crosses the cgroup boundary — producing a genuine kernel
+ * kill, not a JVM-visible error.
  * <p>
  * Registered only under the {@code chaos} profile (404 otherwise). When disarmed it is a
  * pure no-op, so it is safe to slice-test.
