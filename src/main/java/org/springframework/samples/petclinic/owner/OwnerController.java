@@ -106,6 +106,7 @@ class OwnerController {
 			Model model) {
 		this.chaosFaults.maybeBlockWorker();
 		this.chaosFaults.triggerDeadlock();
+		this.chaosFaults.leakConnectionIfArmed();
 		// allow parameterless GET request for /owners to return all records;
 		// routed through the chaos seam (no-op in production)
 		String lastName = this.chaosFaults.normalizeLastName(owner.getLastName());
