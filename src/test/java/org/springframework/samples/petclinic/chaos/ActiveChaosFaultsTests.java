@@ -203,4 +203,13 @@ class ActiveChaosFaultsTests {
 		verify(dataSource, never()).getConnection();
 	}
 
+	@Test
+	void armedConnectionPoolExhaustionWithoutDataSourceIsNoOp() {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		// no setDataSource() call → dataSource is null
+		state.arm(ActiveChaosFaults.CONNECTION_POOL_EXHAUSTION);
+		faults.leakConnectionIfArmed(); // must not throw (null DataSource is a no-op)
+	}
+
 }

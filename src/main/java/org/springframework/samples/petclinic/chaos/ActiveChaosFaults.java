@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.sql.DataSource;
 
@@ -112,6 +113,8 @@ public class ActiveChaosFaults implements ChaosFaults {
 	private DataSource dataSource;
 
 	private final List<Connection> leaked = Collections.synchronizedList(new ArrayList<>());
+
+	private final AtomicInteger leakedReservations = new AtomicInteger(0);
 
 	@Autowired(required = false)
 	void setDataSource(DataSource dataSource) {
@@ -224,19 +227,26 @@ public class ActiveChaosFaults implements ChaosFaults {
 	@Override
 	public void leakConnectionIfArmed() {
 		if (this.state.isArmed(CONNECTION_POOL_EXHAUSTION)) {
-			if (this.dataSource != null && this.leaked.size() < this.leakCap) {
-				try {
-					// Seeded connection leak: borrow a pooled connection and never return
-					// it. After leakCap borrows the HikariCP pool is drained, so a
-					// search's
-					// own query blocks for connection-timeout and fails — the cause is
-					// the
-					// app exhausting its own pool, localized by hikaricp_connections_*.
-					this.leaked.add(this.dataSource.getConnection());
-				}
-				catch (SQLException ex) {
-					// pool already drained — nothing left to leak
-				}
+			if (this.dataSource == null) {
+				return;
+			}
+			// Reserve a slot atomically so at most leakCap connections are ever borrowed,
+			// even under concurrent searches; this stops the borrow below from piling up
+			// extra blocking getConnection() calls past the cap.
+			if (this.leakedReservations.incrementAndGet() > this.leakCap) {
+				this.leakedReservations.decrementAndGet();
+				return;
+			}
+			try {
+				// Seeded connection leak: borrow a pooled connection and never return it.
+				// After leakCap borrows the HikariCP pool is drained, so a search's own
+				// query blocks for connection-timeout and fails — the cause is the app
+				// exhausting its own pool, localized by hikaricp_connections_*.
+				this.leaked.add(this.dataSource.getConnection());
+			}
+			catch (SQLException ex) {
+				// pool already drained — release the reservation, nothing was leaked
+				this.leakedReservations.decrementAndGet();
 			}
 		}
 		else {
@@ -245,6 +255,9 @@ public class ActiveChaosFaults implements ChaosFaults {
 	}
 
 	private void releaseLeaked() {
+		if (this.leaked.isEmpty()) {
+			return;
+		}
 		synchronized (this.leaked) {
 			for (Connection connection : this.leaked) {
 				try {
@@ -255,6 +268,7 @@ public class ActiveChaosFaults implements ChaosFaults {
 				}
 			}
 			this.leaked.clear();
+			this.leakedReservations.set(0);
 		}
 	}
 
