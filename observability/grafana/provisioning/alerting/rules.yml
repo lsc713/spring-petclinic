@@ -749,3 +749,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0.2]
+  - orgId: 1
+    name: chaos-queue-backpressure
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-queue-backpressure
+        title: QueueBackpressure
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Kafka consumer lag is climbing — work is queuing faster than it drains (backpressure), invisible to request metrics
+          augmentation: "Augmentation signal: the synchronous HTTP request/error metrics stay nominal because the producing path returns immediately; only the Kafka consumer lag (kafka_consumer_fetch_manager_records_lag_max) shows the async backlog growing faster than the slow consumer drains it — backpressure on the queue tier."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'max(kafka_consumer_fetch_manager_records_lag_max{service="petclinic"})'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [500]

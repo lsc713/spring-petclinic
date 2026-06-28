@@ -95,6 +95,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String CPU_THROTTLE = "cpuThrottle";
 
+	/**
+	 * Scenario key: queue backpressure — an armed producer floods a Kafka topic faster
+	 * than the slow consumer drains it, so consumer lag accumulates.
+	 */
+	public static final String QUEUE_BACKPRESSURE = "queueBackpressure";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
