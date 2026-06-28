@@ -856,4 +856,4 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [0.3]
+                    params: [0.2]
