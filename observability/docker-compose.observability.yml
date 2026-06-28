@@ -64,7 +64,10 @@ services:
       - "8088:8080"
 
   kafka:
-    image: apache/kafka:3.9.0
+    # GraalVM-native build (no JVM) — the JVM-based apache/kafka image's bundled JDK 21
+    # crashes at startup on aarch64/Apple Silicon (SIGILL from SVE; legacy GC flags). The
+    # native image sidesteps the JVM entirely and uses the same KAFKA_* config interface.
+    image: apache/kafka-native:3.9.0
     ports:
       - "9092:9092"
     environment:
