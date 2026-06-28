@@ -15,6 +15,8 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
+import java.util.List;
+
 import javax.sql.DataSource;
 
 import io.micrometer.core.instrument.MeterRegistry;
@@ -22,6 +24,8 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -58,6 +62,17 @@ class QueryCountChaosConfigTests {
 				assertThat(context).hasNotFailed().hasSingleBean(QueryCountChaosConfig.class);
 				assertThat(context.getBean(DataSource.class)).isInstanceOf(QueryCountingDataSource.class);
 			});
+	}
+
+	@Test
+	void registersQueryCountInterceptorWhenMeterRegistryPresent() {
+		this.runner.withPropertyValues("spring.profiles.active=chaos").run((context) -> {
+			QueryCountChaosConfig config = context.getBean(QueryCountChaosConfig.class);
+			InterceptorRegistry interceptorRegistry = new InterceptorRegistry();
+			config.addInterceptors(interceptorRegistry);
+			List<Object> interceptors = ReflectionTestUtils.invokeMethod(interceptorRegistry, "getInterceptors");
+			assertThat(interceptors).anyMatch((interceptor) -> interceptor instanceof QueryCountInterceptor);
+		});
 	}
 
 }
