@@ -17,13 +17,22 @@ package org.springframework.samples.petclinic.chaos;
 
 import java.lang.Thread.State;
 import java.net.ConnectException;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.Map;
+
+import javax.sql.DataSource;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataAccessResourceFailureException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 class ActiveChaosFaultsTests {
 
@@ -140,6 +149,67 @@ class ActiveChaosFaultsTests {
 		assertThat(faults.shouldOomKill()).isFalse();
 		state.arm(ActiveChaosFaults.OOM_KILL);
 		assertThat(faults.shouldOomKill()).isTrue();
+	}
+
+	@Test
+	void armedConnectionPoolExhaustionLeaksUpToCap() throws SQLException {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		DataSource dataSource = mock(DataSource.class);
+		when(dataSource.getConnection()).thenAnswer((invocation) -> mock(Connection.class));
+		faults.setDataSource(dataSource);
+		faults.setLeakCap(3);
+		state.arm(ActiveChaosFaults.CONNECTION_POOL_EXHAUSTION);
+
+		for (int i = 0; i < 5; i++) {
+			faults.leakConnectionIfArmed();
+		}
+
+		// borrows stop at the cap (3), even though the hook is called 5 times
+		verify(dataSource, times(3)).getConnection();
+	}
+
+	@Test
+	void disarmedConnectionPoolExhaustionReleasesHeldConnections() throws SQLException {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		DataSource dataSource = mock(DataSource.class);
+		Connection first = mock(Connection.class);
+		Connection second = mock(Connection.class);
+		when(dataSource.getConnection()).thenReturn(first, second);
+		faults.setDataSource(dataSource);
+		faults.setLeakCap(5);
+
+		state.arm(ActiveChaosFaults.CONNECTION_POOL_EXHAUSTION);
+		faults.leakConnectionIfArmed();
+		faults.leakConnectionIfArmed();
+
+		state.disarm(ActiveChaosFaults.CONNECTION_POOL_EXHAUSTION);
+		faults.leakConnectionIfArmed(); // disarmed branch releases held connections
+
+		verify(first).close();
+		verify(second).close();
+	}
+
+	@Test
+	void disarmedConnectionPoolExhaustionNeverBorrows() throws SQLException {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		DataSource dataSource = mock(DataSource.class);
+		faults.setDataSource(dataSource);
+
+		faults.leakConnectionIfArmed(); // scenario never armed
+
+		verify(dataSource, never()).getConnection();
+	}
+
+	@Test
+	void armedConnectionPoolExhaustionWithoutDataSourceIsNoOp() {
+		ChaosState state = new ChaosState();
+		ActiveChaosFaults faults = new ActiveChaosFaults(state);
+		// no setDataSource() call → dataSource is null
+		state.arm(ActiveChaosFaults.CONNECTION_POOL_EXHAUSTION);
+		faults.leakConnectionIfArmed(); // must not throw (null DataSource is a no-op)
 	}
 
 }
