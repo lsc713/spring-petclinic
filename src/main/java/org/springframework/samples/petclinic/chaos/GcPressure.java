@@ -46,6 +46,12 @@ public class GcPressure {
 	@Value("${chaos.gc.chunk-kb:64}")
 	private int chunkKb = 64;
 
+	@Value("${chaos.gc.churn-batch:400}")
+	private int churnBatch = 400;
+
+	@Value("${chaos.gc.churn-pause-ms:8}")
+	private long churnPauseMs = 8;
+
 	public GcPressure(ChaosState state) {
 		this.state = state;
 	}
@@ -100,12 +106,35 @@ public class GcPressure {
 			retained.add(chunk);
 			held += chunkBytes;
 		}
-		// Phase 2: churn short-lived garbage so GC runs constantly against the full heap.
-		while (this.state.isArmed(ActiveChaosFaults.GC_THRASHING)) {
-			byte[] garbage = new byte[chunkBytes];
-			garbage[0] = 1; // touch so the JIT cannot elide the allocation
+		// Phase 2: rotate the retained chunks so the OLD generation churns continuously
+		// (pure young-gen garbage is too cheap for G1 to thrash on). The rotation is
+		// throttled — churnBatch allocations, then a churnPauseMs pause — so GC overhead
+		// stays high yet BOUNDED: un-throttled rotation freezes the JVM in stop-the-world
+		// GC
+		// so hard that even the management endpoint cannot be scraped, and the metric
+		// vanishes under the very condition it must detect.
+		int slot = 0;
+		int sincePause = 0;
+		while (this.state.isArmed(ActiveChaosFaults.GC_THRASHING) && !retained.isEmpty()) {
+			byte[] chunk = new byte[chunkBytes];
+			chunk[0] = 1; // touch so the JIT cannot elide the allocation
+			retained.set(slot, chunk); // the displaced chunk becomes old-gen garbage
+			slot = (slot + 1) % retained.size();
+			if (++sincePause >= this.churnBatch) {
+				sincePause = 0;
+				sleepQuietly(this.churnPauseMs);
+			}
 		}
 		retained.clear(); // disarmed: release so the heap recovers
+	}
+
+	private static void sleepQuietly(long millis) {
+		try {
+			Thread.sleep(millis);
+		}
+		catch (InterruptedException ex) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 }
