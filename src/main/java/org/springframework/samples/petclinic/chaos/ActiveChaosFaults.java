@@ -101,6 +101,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String QUEUE_BACKPRESSURE = "queueBackpressure";
 
+	/**
+	 * Scenario key: GC thrashing — an armed allocator retains most of a bounded heap and
+	 * churns on top, so the JVM spends most of its time in stop-the-world GC.
+	 */
+	public static final String GC_THRASHING = "gcThrashing";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 

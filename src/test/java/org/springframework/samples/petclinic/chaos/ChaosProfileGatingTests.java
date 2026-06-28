@@ -99,6 +99,19 @@ class ChaosProfileGatingTests {
 				.doesNotHaveBean(BackpressureConsumer.class));
 	}
 
+	@Test
+	void chaosProfileWiresGcPressure() {
+		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, GcPressure.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(GcPressure.class));
+	}
+
+	@Test
+	void defaultProfileExcludesGcPressure() {
+		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, GcPressure.class)
+			.run((context) -> assertThat(context).hasNotFailed().doesNotHaveBean(GcPressure.class));
+	}
+
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
 			boolean present) {
 		boolean actual = context.getBeanNamesForType(type).length > 0;
