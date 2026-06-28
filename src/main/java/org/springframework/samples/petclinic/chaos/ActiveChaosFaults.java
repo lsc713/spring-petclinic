@@ -89,6 +89,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String CONNECTION_POOL_EXHAUSTION = "connectionPoolExhaustion";
 
+	/**
+	 * Scenario key: CPU throttling — armed pods burn CPU past the container CPU limit so
+	 * the kernel CFS scheduler throttles the container.
+	 */
+	public static final String CPU_THROTTLE = "cpuThrottle";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 

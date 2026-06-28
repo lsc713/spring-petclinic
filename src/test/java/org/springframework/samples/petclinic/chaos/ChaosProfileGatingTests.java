@@ -56,6 +56,19 @@ class ChaosProfileGatingTests {
 			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(DeadlockProbe.class));
 	}
 
+	@Test
+	void chaosProfileWiresCpuBurner() {
+		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, CpuBurner.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(CpuBurner.class));
+	}
+
+	@Test
+	void defaultProfileExcludesCpuBurner() {
+		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, CpuBurner.class)
+			.run((context) -> assertThat(context).hasNotFailed().doesNotHaveBean(CpuBurner.class));
+	}
+
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
 			boolean present) {
 		boolean actual = context.getBeanNamesForType(type).length > 0;
