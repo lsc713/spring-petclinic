@@ -112,6 +112,13 @@ class ChaosProfileGatingTests {
 			.run((context) -> assertThat(context).hasNotFailed().doesNotHaveBean(GcPressure.class));
 	}
 
+	@Test
+	void chaosProfileWiresLockContender() {
+		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, LockContender.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(LockContender.class));
+	}
+
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
 			boolean present) {
 		boolean actual = context.getBeanNamesForType(type).length > 0;
