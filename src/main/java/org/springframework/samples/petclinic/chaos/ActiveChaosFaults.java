@@ -107,6 +107,12 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String GC_THRASHING = "gcThrashing";
 
+	/**
+	 * Scenario key: lock contention — armed owner searches serialize on one hot monitor,
+	 * so concurrent load piles threads up BLOCKED (no cycle, so it is not a deadlock).
+	 */
+	public static final String LOCK_CONTENTION = "lockContention";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
