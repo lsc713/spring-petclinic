@@ -25,6 +25,16 @@ spec:
           env:
             - name: SPRING_PROFILES_ACTIVE
               value: chaos
+          # Gate readiness on actual app health so `kubectl rollout status` (and the smoke's
+          # arm step right after it) wait for Spring Boot to finish booting — boot is slower
+          # under the 1-core CPU limit, and arming before the app listens would fail.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
           # No -Xmx override: the JRE sizes the heap to a fraction of this limit (default
           # MaxRAMPercentage), so the JVM boots well within it. The oomKill fault allocates
           # NATIVE (off-heap) memory, which the JVM does not bound, so resident memory still

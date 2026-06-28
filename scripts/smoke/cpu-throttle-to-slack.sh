@@ -63,8 +63,10 @@ echo "==> waiting up to 150s for CpuThrottled to fire"
 wait_alert CpuThrottled
 
 echo "==> augmentation: throttle ratio high while CPU usage sits pinned at the limit"
-ratio=$(prom 'sum(rate(container_cpu_cfs_throttled_periods_total{namespace="petclinic-bench",pod=~"petclinic.*",container="petclinic"}[1m])) / sum(rate(container_cpu_cfs_periods_total{namespace="petclinic-bench",pod=~"petclinic.*",container="petclinic"}[1m]))')
-usage=$(prom 'sum(rate(container_cpu_usage_seconds_total{namespace="petclinic-bench",pod=~"petclinic.*",container="petclinic"}[1m]))')
+# Docker Desktop's kubelet emits CFS throttle metrics at the pod-cgroup level (pod label, no
+# container label), so these select on pod only.
+ratio=$(prom 'sum(rate(container_cpu_cfs_throttled_periods_total{namespace="petclinic-bench",pod=~"petclinic.*"}[1m])) / sum(rate(container_cpu_cfs_periods_total{namespace="petclinic-bench",pod=~"petclinic.*"}[1m]))')
+usage=$(prom 'sum(rate(container_cpu_usage_seconds_total{namespace="petclinic-bench",pod=~"petclinic.*"}[1m]))')
 echo "    cfs throttle ratio = $ratio (>0.2),  cpu usage cores = $usage (≈ 1-core limit, looks fine)"
 
 echo "==> disarming cpuThrottle (burn threads self-terminate)"

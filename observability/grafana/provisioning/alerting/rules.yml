@@ -721,7 +721,9 @@ groups:
               datasource:
                 type: prometheus
                 uid: prometheus
-              expr: 'sum(rate(container_cpu_cfs_throttled_periods_total{namespace="petclinic-bench", pod=~"petclinic.*", container="petclinic"}[1m])) / sum(rate(container_cpu_cfs_periods_total{namespace="petclinic-bench", pod=~"petclinic.*", container="petclinic"}[1m]))'
+              # Docker Desktop's kubelet emits CFS throttle metrics at the pod-cgroup level
+              # (label pod=..., no container= label), so the selector filters on pod only.
+              expr: 'sum(rate(container_cpu_cfs_throttled_periods_total{namespace="petclinic-bench", pod=~"petclinic.*"}[1m])) / sum(rate(container_cpu_cfs_periods_total{namespace="petclinic-bench", pod=~"petclinic.*"}[1m]))'
               instant: true
               range: false
           - refId: B
