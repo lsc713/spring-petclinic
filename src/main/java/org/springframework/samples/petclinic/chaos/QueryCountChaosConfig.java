@@ -19,6 +19,7 @@ import javax.sql.DataSource;
 
 import io.micrometer.core.instrument.MeterRegistry;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -32,14 +33,21 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * {@link QueryCountingDataSource}, and {@link QueryCountInterceptor} records the
  * per-request count. Under the default profile this configuration is not loaded, so the
  * pool is never wrapped (A1 invariant).
+ *
+ * <p>
+ * The {@link MeterRegistry} is injected via {@link ObjectProvider} so this configuration
+ * still constructs in web-slice tests ({@code @WebMvcTest}) that auto-instantiate
+ * {@link WebMvcConfigurer} beans without supplying a meter registry; the interceptor is
+ * registered only when a registry is actually present.
+ * </p>
  */
 @Configuration
 @Profile("chaos")
 public class QueryCountChaosConfig implements WebMvcConfigurer {
 
-	private final MeterRegistry meterRegistry;
+	private final ObjectProvider<MeterRegistry> meterRegistry;
 
-	public QueryCountChaosConfig(MeterRegistry meterRegistry) {
+	public QueryCountChaosConfig(ObjectProvider<MeterRegistry> meterRegistry) {
 		this.meterRegistry = meterRegistry;
 	}
 
@@ -62,7 +70,7 @@ public class QueryCountChaosConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
-		registry.addInterceptor(new QueryCountInterceptor(this.meterRegistry));
+		this.meterRegistry.ifAvailable((meters) -> registry.addInterceptor(new QueryCountInterceptor(meters)));
 	}
 
 }

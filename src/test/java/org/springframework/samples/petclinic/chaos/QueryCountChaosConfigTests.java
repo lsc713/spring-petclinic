@@ -49,4 +49,15 @@ class QueryCountChaosConfigTests {
 		});
 	}
 
+	@Test
+	void chaosProfileWithoutMeterRegistryStillLoads() {
+		new ApplicationContextRunner().withBean("appDataSource", DataSource.class, () -> mock(DataSource.class))
+			.withUserConfiguration(QueryCountChaosConfig.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> {
+				assertThat(context).hasNotFailed().hasSingleBean(QueryCountChaosConfig.class);
+				assertThat(context.getBean(DataSource.class)).isInstanceOf(QueryCountingDataSource.class);
+			});
+	}
+
 }
