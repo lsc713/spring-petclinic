@@ -857,3 +857,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0.2]
+  - orgId: 1
+    name: chaos-lock-contention
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-lock-contention
+        title: LockContention
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Many threads are BLOCKED on one hot monitor — the owner search is serialized by lock contention, not a deadlock
+          augmentation: "Augmentation signal: petclinic_blocked_threads is high while petclinic_deadlocked_threads stays 0 — so this is NOT a deadlock (no cycle) but contention on one hot lock. A thread dump (GET /actuator/threaddump) shows the threads BLOCKED on the same monitor; latency/error metrics only say 'slow'."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'max(petclinic_blocked_threads{service="petclinic"})'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [5]
