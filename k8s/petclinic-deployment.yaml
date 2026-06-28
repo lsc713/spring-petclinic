@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: petclinic
-          image: spring-petclinic:w5d
+          image: spring-petclinic:w7
           imagePullPolicy: Never
           ports:
             - containerPort: 8080
@@ -30,10 +30,17 @@ spec:
           # NATIVE (off-heap) memory, which the JVM does not bound, so resident memory still
           # climbs past the limit and the kernel OOM-kills the container (app-blind SIGKILL).
           # See OomKillEndpoint.
+          # A 1-core CPU limit is ample for boot and steady state; the cpuThrottle fault
+          # spawns 4 busy-loop threads (~4 cores of demand), so the kernel CFS scheduler
+          # throttles the container against this cap. CPU usage then sits pinned at ~1 core
+          # (looks fine) while container_cpu_cfs_throttled_* climbs — the only signal of the
+          # cause. See CpuBurner.
           resources:
             requests:
+              cpu: "250m"
               memory: "768Mi"
             limits:
+              cpu: "1"
               memory: "768Mi"
 ---
 apiVersion: v1

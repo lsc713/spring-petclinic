@@ -12,6 +12,12 @@ rules:
   - apiGroups: [""]
     resources: ["events"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes/metrics"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -64,6 +70,35 @@ data:
       }]
       forward_to      = [prometheus.remote_write.host.receiver]
       scrape_interval = "15s"
+    }
+
+    // CPU CFS throttling is exposed by cAdvisor in the kubelet, not by KSM. Discover the node
+    // and scrape its /metrics/cadvisor over https with the pod's service-account token, keep
+    // only the CFS series (cAdvisor is high-cardinality), then remote-write to the host
+    // Prometheus so the CpuThrottled alert can fire. See k8s/petclinic-deployment.yaml (cpu limit).
+    discovery.kubernetes "nodes" {
+      role = "node"
+    }
+
+    prometheus.scrape "cadvisor" {
+      targets           = discovery.kubernetes.nodes.targets
+      scheme            = "https"
+      bearer_token_file = "/var/run/secrets/kubernetes.io/serviceaccount/token"
+      metrics_path      = "/metrics/cadvisor"
+      scrape_interval   = "15s"
+      tls_config {
+        insecure_skip_verify = true
+      }
+      forward_to = [prometheus.relabel.cadvisor_keep.receiver]
+    }
+
+    prometheus.relabel "cadvisor_keep" {
+      rule {
+        source_labels = ["__name__"]
+        regex         = "container_cpu_cfs_throttled_periods_total|container_cpu_cfs_periods_total|container_cpu_usage_seconds_total"
+        action        = "keep"
+      }
+      forward_to = [prometheus.remote_write.host.receiver]
     }
 
     prometheus.remote_write "host" {

@@ -693,3 +693,57 @@ groups:
                 - evaluator:
                     type: gt
                     params: [0]
+  - orgId: 1
+    name: chaos-cpu-throttle
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-cpu-throttled
+        title: CpuThrottled
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          category: infrastructure
+        annotations:
+          summary: The petclinic container is being CPU CFS-throttled — slow, but CPU usage looks fine (pinned at the limit)
+          augmentation: "Augmentation signal: container_cpu_usage_seconds_total rate sits at the CPU limit and looks healthy; only the CFS throttle ratio (container_cpu_cfs_throttled_periods_total / container_cpu_cfs_periods_total) names the cause as a CPU-limit cap (infrastructure / limit config), not application code."
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'sum(rate(container_cpu_cfs_throttled_periods_total{namespace="petclinic-bench", pod=~"petclinic.*", container="petclinic"}[1m])) / sum(rate(container_cpu_cfs_periods_total{namespace="petclinic-bench", pod=~"petclinic.*", container="petclinic"}[1m]))'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0.2]
