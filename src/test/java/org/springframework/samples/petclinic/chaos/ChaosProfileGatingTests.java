@@ -19,8 +19,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.kafka.core.KafkaTemplate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 class ChaosProfileGatingTests {
 
@@ -67,6 +69,34 @@ class ChaosProfileGatingTests {
 	void defaultProfileExcludesCpuBurner() {
 		new ApplicationContextRunner().withUserConfiguration(ChaosState.class, CpuBurner.class)
 			.run((context) -> assertThat(context).hasNotFailed().doesNotHaveBean(CpuBurner.class));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void chaosProfileWiresBackpressureProducer() {
+		new ApplicationContextRunner()
+			.withBean(KafkaTemplate.class, () -> (KafkaTemplate<String, String>) mock(KafkaTemplate.class))
+			.withUserConfiguration(ChaosState.class, BackpressureProducer.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(BackpressureProducer.class));
+	}
+
+	@Test
+	void chaosProfileWiresBackpressureConsumer() {
+		new ApplicationContextRunner().withUserConfiguration(BackpressureConsumer.class)
+			.withPropertyValues("spring.profiles.active=chaos", "chaos.queue.process-delay-ms=0")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(BackpressureConsumer.class));
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	void defaultProfileExcludesBackpressureComponents() {
+		new ApplicationContextRunner()
+			.withBean(KafkaTemplate.class, () -> (KafkaTemplate<String, String>) mock(KafkaTemplate.class))
+			.withUserConfiguration(ChaosState.class, BackpressureProducer.class, BackpressureConsumer.class)
+			.run((context) -> assertThat(context).hasNotFailed()
+				.doesNotHaveBean(BackpressureProducer.class)
+				.doesNotHaveBean(BackpressureConsumer.class));
 	}
 
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,

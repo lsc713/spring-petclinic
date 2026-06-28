@@ -45,6 +45,7 @@ dependencies {
   implementation 'org.springframework.boot:spring-boot-micrometer-tracing-opentelemetry'
   implementation 'io.opentelemetry:opentelemetry-exporter-otlp'
   implementation 'org.springframework.boot:spring-boot-starter-restclient'
+  implementation 'org.springframework.kafka:spring-kafka'
   runtimeOnly "org.webjars:webjars-locator-lite:${webjarsLocatorLiteVersion}"
   runtimeOnly "org.webjars.npm:bootstrap:${webjarsBootstrapVersion}"
   runtimeOnly "org.webjars.npm:font-awesome:${webjarsFontawesomeVersion}"
