@@ -51,7 +51,10 @@ echo "==> waiting up to 150s for LockContention to fire (BLOCKED threads must ex
 wait_alert LockContention
 
 echo "==> augmentation: BLOCKED threads high while deadlocked threads stay 0 (NOT a deadlock)"
-blocked=$(prom 'max(petclinic_blocked_threads{service="petclinic"})')
+# Report the PEAK blocked count over the load window: the bursty curl rounds make the
+# instantaneous gauge oscillate (high during each burst, ~0 in the gap the probe may sample),
+# so max_over_time shows the value the alert actually fired on.
+blocked=$(prom 'max_over_time(petclinic_blocked_threads{service="petclinic"}[2m])')
 deadlocked=$(prom 'max(petclinic_deadlocked_threads{service="petclinic"})')
 parked=$(curl -s "$MGMT/actuator/threaddump" | jq '[.threads[]? | select(.threadState=="BLOCKED")] | length' 2>/dev/null || echo "n/a")
 echo "    petclinic_blocked_threads = $blocked (>5),  petclinic_deadlocked_threads = $deadlocked (= 0: NOT a deadlock),  thread dump BLOCKED = $parked"
