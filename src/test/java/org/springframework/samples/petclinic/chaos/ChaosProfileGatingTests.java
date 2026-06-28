@@ -119,6 +119,23 @@ class ChaosProfileGatingTests {
 			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(LockContender.class));
 	}
 
+	@Test
+	void chaosProfileWiresContentionProbe() {
+		new ApplicationContextRunner().withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+			.withUserConfiguration(ContentionProbe.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(ContentionProbe.class));
+	}
+
+	@Test
+	void defaultProfileExcludesContentionBeans() {
+		new ApplicationContextRunner().withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+			.withUserConfiguration(ChaosState.class, LockContender.class, ContentionProbe.class)
+			.run((context) -> assertThat(context).hasNotFailed()
+				.doesNotHaveBean(LockContender.class)
+				.doesNotHaveBean(ContentionProbe.class));
+	}
+
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
 			boolean present) {
 		boolean actual = context.getBeanNamesForType(type).length > 0;
