@@ -15,7 +15,8 @@
  */
 package org.springframework.samples.petclinic.chaos;
 
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -36,7 +37,7 @@ public class CpuBurner {
 
 	private final ChaosState state;
 
-	private final AtomicBoolean burning = new AtomicBoolean(false);
+	private final List<Thread> burnThreads = new ArrayList<>();
 
 	private static volatile double blackhole;
 
@@ -52,26 +53,35 @@ public class CpuBurner {
 	}
 
 	/**
-	 * Reconcile the burn workload with the armed state: start the burn threads the first
-	 * time the scenario is seen armed, and let them stop themselves once it is disarmed.
+	 * Reconcile the burn workload with the armed state: while the scenario is armed,
+	 * ensure a pool of burn threads is running (starting one if the previous threads have
+	 * all exited); while disarmed, the threads stop themselves. Reconciling against
+	 * actual thread liveness (rather than a one-shot flag) makes a disarm→re-arm cycle
+	 * restart the burn correctly.
 	 */
 	@Scheduled(fixedRateString = "${chaos.cpu.interval-ms:2000}")
 	void reconcile() {
-		if (this.state.isArmed(ActiveChaosFaults.CPU_THROTTLE)) {
-			if (this.burning.compareAndSet(false, true)) {
-				startBurn();
-			}
-		}
-		else {
-			this.burning.set(false);
+		if (this.state.isArmed(ActiveChaosFaults.CPU_THROTTLE) && !anyBurnThreadAlive()) {
+			startBurn();
 		}
 	}
 
+	private boolean anyBurnThreadAlive() {
+		for (Thread t : this.burnThreads) {
+			if (t.isAlive()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	private void startBurn() {
+		this.burnThreads.clear();
 		for (int i = 0; i < this.threads; i++) {
 			Thread t = new Thread(this::burnUntilDisarmed, "chaos-cpu-burn-" + i);
 			t.setDaemon(true);
 			t.start();
+			this.burnThreads.add(t);
 		}
 	}
 

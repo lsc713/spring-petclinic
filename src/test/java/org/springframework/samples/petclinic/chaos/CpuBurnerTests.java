@@ -59,6 +59,36 @@ class CpuBurnerTests {
 		assertThat(cpuBurnThreadCount()).isZero();
 	}
 
+	@Test
+	void rearmAfterDisarmRestartsBurnThreads() throws InterruptedException {
+		ChaosState state = new ChaosState();
+		CpuBurner burner = new CpuBurner(state);
+		burner.setThreads(2);
+
+		state.arm(ActiveChaosFaults.CPU_THROTTLE);
+		burner.reconcile();
+		waitForBurnThreads(2);
+
+		state.disarm(ActiveChaosFaults.CPU_THROTTLE);
+		waitForBurnThreads(0);
+
+		// re-arm + reconcile must restart the burn (regression: the old flag stayed set,
+		// so the threads never respawned)
+		state.arm(ActiveChaosFaults.CPU_THROTTLE);
+		burner.reconcile();
+		waitForBurnThreads(2);
+
+		state.disarm(ActiveChaosFaults.CPU_THROTTLE);
+		waitForBurnThreads(0);
+	}
+
+	private static void waitForBurnThreads(int target) throws InterruptedException {
+		for (int i = 0; i < 100 && cpuBurnThreadCount() != target; i++) {
+			Thread.sleep(20);
+		}
+		assertThat(cpuBurnThreadCount()).isEqualTo(target);
+	}
+
 	private static int cpuBurnThreadCount() {
 		return (int) Thread.getAllStackTraces()
 			.keySet()
