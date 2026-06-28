@@ -57,7 +57,10 @@ public class CpuBurner {
 	 * ensure a pool of burn threads is running (starting one if the previous threads have
 	 * all exited); while disarmed, the threads stop themselves. Reconciling against
 	 * actual thread liveness (rather than a one-shot flag) makes a disarm→re-arm cycle
-	 * restart the burn correctly.
+	 * restart the burn correctly. A restart is gated on ALL prior threads having exited,
+	 * so a re-arm while a few stragglers are still spinning leaves those survivors and
+	 * skips the restart — harmless, since even one busy thread keeps the container over
+	 * its CPU limit, so the fault stays active.
 	 */
 	@Scheduled(fixedRateString = "${chaos.cpu.interval-ms:2000}")
 	void reconcile() {
