@@ -964,4 +964,8 @@ groups:
               conditions:
                 - evaluator:
                     type: gt
-                    params: [3]
+                    # Live-tuned: the disarmed /owners search already costs ~4 queries/request
+                    # (pagination count + content select + eager pet loads), so the design's
+                    # threshold of 3 fired without the fault. Armed N+1 measures ~14/request, so
+                    # 8 sits cleanly between the baseline (4) and the fault (14).
+                    params: [8]
