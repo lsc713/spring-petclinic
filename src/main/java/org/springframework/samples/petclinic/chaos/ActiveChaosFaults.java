@@ -113,6 +113,13 @@ public class ActiveChaosFaults implements ChaosFaults {
 	 */
 	public static final String LOCK_CONTENTION = "lockContention";
 
+	/**
+	 * Scenario key: cache stampede — while armed, concurrent owner searches that hit the
+	 * expired single-entry cache all recompute it at once (a herd), because there is no
+	 * single-flight guard. The augmentation is the count of concurrent recomputes.
+	 */
+	public static final String CACHE_STAMPEDE = "cacheStampede";
+
 	/** Sentinel term that matches no owner (used by the corruption fault). */
 	public static final String NO_MATCH_SENTINEL = "__chaos_nomatch__";
 
