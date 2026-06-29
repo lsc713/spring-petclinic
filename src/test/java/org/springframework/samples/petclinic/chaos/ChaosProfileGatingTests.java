@@ -136,6 +136,21 @@ class ChaosProfileGatingTests {
 				.doesNotHaveBean(ContentionProbe.class));
 	}
 
+	@Test
+	void chaosProfileWiresCacheStampede() {
+		new ApplicationContextRunner().withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+			.withUserConfiguration(ChaosState.class, CacheStampede.class)
+			.withPropertyValues("spring.profiles.active=chaos")
+			.run((context) -> assertThat(context).hasNotFailed().hasSingleBean(CacheStampede.class));
+	}
+
+	@Test
+	void defaultProfileExcludesCacheStampede() {
+		new ApplicationContextRunner().withBean(MeterRegistry.class, SimpleMeterRegistry::new)
+			.withUserConfiguration(ChaosState.class, CacheStampede.class)
+			.run((context) -> assertThat(context).hasNotFailed().doesNotHaveBean(CacheStampede.class));
+	}
+
 	private static void assertThatBeanPresent(org.springframework.context.ApplicationContext context, Class<?> type,
 			boolean present) {
 		boolean actual = context.getBeanNamesForType(type).length > 0;

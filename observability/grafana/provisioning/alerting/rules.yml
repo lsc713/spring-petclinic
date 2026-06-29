@@ -969,3 +969,57 @@ groups:
                     # threshold of 3 fired without the fault. Armed N+1 measures ~14/request, so
                     # 8 sits cleanly between the baseline (4) and the fault (14).
                     params: [8]
+  - orgId: 1
+    name: chaos-cache-stampede
+    folder: chaos
+    interval: 30s
+    rules:
+      - uid: chaos-cache-stampede-herd
+        title: CacheStampede
+        condition: C
+        for: 0s
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: petclinic
+        annotations:
+          summary: Concurrent recomputes of the same cached value (stampede herd, not one slow load)
+          dashboard: "Prometheus: petclinic_cache_recompute_inflight / _total"
+        data:
+          - refId: A
+            relativeTimeRange:
+              from: 300
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              datasource:
+                type: prometheus
+                uid: prometheus
+              expr: 'max_over_time(petclinic_cache_recompute_inflight{service="petclinic"}[2m])'
+              instant: true
+              range: false
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              datasource:
+                type: __expr__
+                uid: __expr__
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              datasource:
+                type: __expr__
+                uid: __expr__
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [3]

@@ -23,6 +23,7 @@ import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.samples.petclinic.chaos.CacheStampede;
 import org.springframework.samples.petclinic.chaos.ChaosFaults;
 import org.springframework.samples.petclinic.chaos.DownstreamClient;
 import org.springframework.samples.petclinic.chaos.LockContender;
@@ -62,12 +63,15 @@ class OwnerController {
 
 	private final ObjectProvider<LockContender> lockContender;
 
+	private final ObjectProvider<CacheStampede> cacheStampede;
+
 	public OwnerController(OwnerRepository owners, ChaosFaults chaosFaults, ObjectProvider<DownstreamClient> downstream,
-			ObjectProvider<LockContender> lockContender) {
+			ObjectProvider<LockContender> lockContender, ObjectProvider<CacheStampede> cacheStampede) {
 		this.owners = owners;
 		this.chaosFaults = chaosFaults;
 		this.downstream = downstream;
 		this.lockContender = lockContender;
+		this.cacheStampede = cacheStampede;
 	}
 
 	@InitBinder
@@ -112,6 +116,7 @@ class OwnerController {
 		this.chaosFaults.triggerDeadlock();
 		this.chaosFaults.leakConnectionIfArmed();
 		this.lockContender.ifAvailable(LockContender::contendIfArmed);
+		this.cacheStampede.ifAvailable(CacheStampede::getOrLoadIfArmed);
 		// allow parameterless GET request for /owners to return all records;
 		// routed through the chaos seam (no-op in production)
 		String lastName = this.chaosFaults.normalizeLastName(owner.getLastName());
