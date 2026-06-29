@@ -48,12 +48,12 @@ echo "==> driving sustained concurrent owner searches (background load, ~130s)"
 LOAD_PID=$!
 trap 'kill "$LOAD_PID" 2>/dev/null || true' EXIT
 
-echo "==> waiting up to 150s for NPlusOneQueries to fire (mean queries/request must exceed 3)"
+echo "==> waiting up to 150s for NPlusOneQueries to fire (mean queries/request must exceed 8)"
 wait_alert NPlusOneQueries
 
 echo "==> augmentation: mean queries-per-request is high while latency alone could not name N+1"
 mean=$(prom 'rate(petclinic_owner_search_queries_sum{uri="/owners"}[2m]) / rate(petclinic_owner_search_queries_count{uri="/owners"}[2m])')
-echo "    petclinic_owner_search_queries mean = $mean per request (>3)"
+echo "    petclinic_owner_search_queries mean = $mean per request (>8; disarmed baseline ~4)"
 
 echo "==> disarming ownerListLatency"
 curl -s -XPOST "$APP/chaos/ownerListLatency/disarm" | jq .
